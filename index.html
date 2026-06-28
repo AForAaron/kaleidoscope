@@ -55,17 +55,24 @@
     #clearBtn   { bottom: 36px; left: 36px; }
     #paletteBtn { bottom: 36px; right: 36px; font-size: 1.3rem; }
 
+    /* Long-press undo feedback */
+    #clearBtn.undo-flash { border-color: rgba(255,200,0,0.8); color: rgba(255,200,0,0.9); }
+
     #panel {
       position: fixed; bottom: 108px; right: 20px; width: 234px;
       background: rgba(10,10,20,0.88);
       border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
       padding: 16px 14px; display: none; flex-direction: column; gap: 14px;
       z-index: 50; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      max-height: calc(100vh - 160px); overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .panel-section-title {
       font-size: 0.7rem; color: rgba(255,255,255,0.4);
       letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px;
     }
+
+    /* ── Palette ── */
     .palette-item {
       display: flex; align-items: center; gap: 10px;
       cursor: pointer; padding: 7px 8px; border-radius: 12px;
@@ -77,32 +84,24 @@
     .palette-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
     .palette-name { color: rgba(255,255,255,0.85); font-size: 0.82rem; }
 
-    .shape-row { display: flex; gap: 8px; }
-    .shape-btn {
+    /* ── Generic small-button row ── */
+    .btn-row { display: flex; gap: 8px; }
+    .row-btn {
       flex: 1; padding: 8px 4px; border-radius: 10px;
       border: 1.5px solid rgba(255,255,255,0.15);
       background: transparent; color: rgba(255,255,255,0.6);
-      font-size: 1.2rem; cursor: pointer; text-align: center;
+      font-size: 0.82rem; cursor: pointer; text-align: center; line-height: 1.4;
       transition: background 0.15s, border-color 0.15s;
       -webkit-tap-highlight-color: transparent;
     }
-    .shape-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
-    .shape-btn:active { opacity: 0.6; }
+    .row-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
+    .row-btn:active { opacity: 0.6; }
+    /* shape buttons are slightly bigger icon */
+    .row-btn.icon { font-size: 1.2rem; }
 
-    .mode-row { display: flex; gap: 8px; }
-    .mode-btn {
-      flex: 1; padding: 9px 4px; border-radius: 10px;
-      border: 1.5px solid rgba(255,255,255,0.15);
-      background: transparent; color: rgba(255,255,255,0.6);
-      font-size: 0.78rem; cursor: pointer; text-align: center; line-height: 1.4;
-      transition: background 0.15s, border-color 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .mode-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
-    .mode-btn:active { opacity: 0.6; }
-
-    .pattern-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .pattern-btn {
+    /* ── Pattern / Effect grid ── */
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .grid-btn {
       padding: 8px 4px; border-radius: 10px;
       border: 1.5px solid rgba(255,255,255,0.15);
       background: transparent; color: rgba(255,255,255,0.6);
@@ -110,8 +109,11 @@
       transition: background 0.15s, border-color 0.15s;
       -webkit-tap-highlight-color: transparent;
     }
-    .pattern-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
-    .pattern-btn:active { opacity: 0.6; }
+    .grid-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
+    .grid-btn:active { opacity: 0.6; }
+    .grid-btn.full  { grid-column: 1 / -1; }
+    /* active glow tint for effect buttons */
+    .grid-btn.effect-active { border-color: rgba(180,120,255,0.6); color: rgba(200,160,255,1); }
   </style>
 </head>
 <body>
@@ -125,17 +127,21 @@
 
 <canvas id="mainCanvas"></canvas>
 
-<button class="ui-btn" id="clearBtn" title="清空/晃动">↺</button>
+<button class="ui-btn" id="clearBtn" title="清空 / 长按撤销">↺</button>
 <button class="ui-btn" id="paletteBtn" title="设置">🎨</button>
 
 <div id="panel">
   <div>
     <div class="panel-section-title">样式</div>
-    <div class="mode-row" id="modeRow"></div>
+    <div class="btn-row" id="modeRow"></div>
+  </div>
+  <div>
+    <div class="panel-section-title">大小</div>
+    <div class="btn-row" id="sizeRow"></div>
   </div>
   <div id="patternSection">
     <div class="panel-section-title">图案</div>
-    <div class="pattern-grid" id="patternGrid"></div>
+    <div class="grid-2col" id="patternGrid"></div>
   </div>
   <div>
     <div class="panel-section-title">配色</div>
@@ -143,7 +149,11 @@
   </div>
   <div id="shapeSection">
     <div class="panel-section-title">形状</div>
-    <div class="shape-row" id="shapeRow"></div>
+    <div class="btn-row" id="shapeRow"></div>
+  </div>
+  <div id="effectSection">
+    <div class="panel-section-title">画笔效果</div>
+    <div class="grid-2col" id="effectGrid"></div>
   </div>
 </div>
 
@@ -159,17 +169,19 @@ const STROKE_WIDTH    = 16;
 const TAP_MOVE_PX     = 10;
 const TAP_TIME_MS     = 250;
 const FLOAT_COUNT     = 24;
-const SHAKE_THRESHOLD = 12;   // m/s²
-const ROT_FRICTION    = 0.978; // 速度衰减（每16ms）
+const SHAKE_THRESHOLD = 12;
+const ROT_FRICTION    = 0.978;
+const RADIUS_RATIOS   = [0.42, 0.56, 0.72];
+const UNDO_MAX        = 5;
 
 // ── 配色 ──────────────────────────────────────
 const PALETTES = [
-  { name: '霓虹荧光',  colors: ['#00ff88','#ff00cc','#ff6600','#00ccff','#ffff00','#ff0066'], bg: '#000000' },
+  { name: '霓虹荧光',   colors: ['#00ff88','#ff00cc','#ff6600','#00ccff','#ffff00','#ff0066'], bg: '#000000' },
   { name: '糖果马卡龙', colors: ['#ff9eb5','#a8edba','#ffd6a5','#b5c7f7','#ffc8e8','#c3f0ca'], bg: '#0d001a' },
-  { name: '彩虹七色',  colors: ['#ff3030','#ff8800','#ffee00','#44ee00','#00aaff','#6644ff','#cc00ff'], bg: '#000000' },
-  { name: '星空深蓝',  colors: ['#4488ff','#88ddff','#ffd700','#ffffff','#66aaff','#aaddff'], bg: '#00001a' },
-  { name: '宝石彩绘',  colors: ['#c0392b','#2471a3','#1e8449','#d4ac0d','#7d3c98','#e8f8f5'], bg: '#08080e' },
-  { name: '花窗玻璃',  colors: ['#1a237e','#880000','#0d5c0d','#cc6600','#4a0072','#cce8ff'], bg: '#03030a' },
+  { name: '彩虹七色',   colors: ['#ff3030','#ff8800','#ffee00','#44ee00','#00aaff','#6644ff','#cc00ff'], bg: '#000000' },
+  { name: '星空深蓝',   colors: ['#4488ff','#88ddff','#ffd700','#ffffff','#66aaff','#aaddff'], bg: '#00001a' },
+  { name: '宝石彩绘',   colors: ['#c0392b','#2471a3','#1e8449','#d4ac0d','#7d3c98','#e8f8f5'], bg: '#08080e' },
+  { name: '花窗玻璃',   colors: ['#1a237e','#880000','#0d5c0d','#cc6600','#4a0072','#cce8ff'], bg: '#03030a' },
 ];
 
 const SHAPE_MODES = [
@@ -183,16 +195,15 @@ const KAL_MODES = [
   { id: 'traditional', label: '◆ 传统' },
 ];
 
-// ── 传统图案预设 ──────────────────────────────
 const PATTERNS = [
-  { id:'gem',     name:'宝石花', sides:[3],     count:26, sizeMin:10, sizeMax:30, rMinR:0.04, rMaxR:0.80, iMin:0.60, iRng:0.40, sx:1.0,  sy:1.0,  ao:0,             aMin:0.60, aRng:0.35 },
-  { id:'crystal', name:'水晶格', sides:[4],     count:20, sizeMin:14, sizeMax:42, rMinR:0.06, rMaxR:0.82, iMin:0.78, iRng:0.22, sx:0.65, sy:1.35, ao:-Math.PI/2,    aMin:0.65, aRng:0.30 },
-  { id:'snow',    name:'冰雪花', sides:[3],     count:18, sizeMin:10, sizeMax:38, rMinR:0.22, rMaxR:0.92, iMin:0.55, iRng:0.30, sx:0.28, sy:1.0,  ao:-Math.PI/2,    aMin:0.50, aRng:0.40 },
-  { id:'fan',     name:'彩扇片', sides:[5,6],   count:13, sizeMin:24, sizeMax:56, rMinR:0.06, rMaxR:0.78, iMin:0.75, iRng:0.20, sx:1.0,  sy:1.0,  ao:0,             aMin:0.60, aRng:0.35 },
-  { id:'jade',    name:'碎玉石', sides:[5,6,6], count:20, sizeMin:14, sizeMax:36, rMinR:0.06, rMaxR:0.82, iMin:0.80, iRng:0.18, sx:1.0,  sy:0.85, ao:0,             aMin:0.55, aRng:0.30 },
-  { id:'shard',   name:'碎玻璃', sides:[3,3,4], count:32, sizeMin:6,  sizeMax:20, rMinR:0.02, rMaxR:0.86, iMin:0.35, iRng:0.65, sx:1.0,  sy:1.0,  ao:0,             aMin:0.65, aRng:0.30 },
-  { id:'ice',     name:'浮冰块', sides:[4,5],   count:11, sizeMin:30, sizeMax:62, rMinR:0.08, rMaxR:0.80, iMin:0.60, iRng:0.40, sx:1.3,  sy:0.72, ao:0,             aMin:0.40, aRng:0.45 },
-  { id:'spike',   name:'星芒刺', sides:[3],     count:24, sizeMin:10, sizeMax:48, rMinR:0.05, rMaxR:0.88, iMin:0.60, iRng:0.40, sx:0.20, sy:1.0,  ao:-Math.PI/2,    aMin:0.65, aRng:0.30 },
+  { id:'gem',     name:'宝石花', sides:[3],     count:26, sizeMin:10, sizeMax:30, rMinR:0.04, rMaxR:0.80, iMin:0.60, iRng:0.40, sx:1.0,  sy:1.0,  ao:0,          aMin:0.60, aRng:0.35 },
+  { id:'crystal', name:'水晶格', sides:[4],     count:20, sizeMin:14, sizeMax:42, rMinR:0.06, rMaxR:0.82, iMin:0.78, iRng:0.22, sx:0.65, sy:1.35, ao:-Math.PI/2, aMin:0.65, aRng:0.30 },
+  { id:'snow',    name:'冰雪花', sides:[3],     count:18, sizeMin:10, sizeMax:38, rMinR:0.22, rMaxR:0.92, iMin:0.55, iRng:0.30, sx:0.28, sy:1.0,  ao:-Math.PI/2, aMin:0.50, aRng:0.40 },
+  { id:'fan',     name:'彩扇片', sides:[5,6],   count:13, sizeMin:24, sizeMax:56, rMinR:0.06, rMaxR:0.78, iMin:0.75, iRng:0.20, sx:1.0,  sy:1.0,  ao:0,          aMin:0.60, aRng:0.35 },
+  { id:'jade',    name:'碎玉石', sides:[5,6,6], count:20, sizeMin:14, sizeMax:36, rMinR:0.06, rMaxR:0.82, iMin:0.80, iRng:0.18, sx:1.0,  sy:0.85, ao:0,          aMin:0.55, aRng:0.30 },
+  { id:'shard',   name:'碎玻璃', sides:[3,3,4], count:32, sizeMin:6,  sizeMax:20, rMinR:0.02, rMaxR:0.86, iMin:0.35, iRng:0.65, sx:1.0,  sy:1.0,  ao:0,          aMin:0.65, aRng:0.30 },
+  { id:'ice',     name:'浮冰块', sides:[4,5],   count:11, sizeMin:30, sizeMax:62, rMinR:0.08, rMaxR:0.80, iMin:0.60, iRng:0.40, sx:1.3,  sy:0.72, ao:0,          aMin:0.40, aRng:0.45 },
+  { id:'spike',   name:'星芒刺', sides:[3],     count:24, sizeMin:10, sizeMax:48, rMinR:0.05, rMaxR:0.88, iMin:0.60, iRng:0.40, sx:0.20, sy:1.0,  ao:-Math.PI/2, aMin:0.65, aRng:0.30 },
 ];
 
 // ── 状态 ──────────────────────────────────────
@@ -200,9 +211,21 @@ let currentPaletteIdx = 0;
 let currentShapeMode  = 'mixed';
 let kaleidoscopeMode  = 'digital';
 let currentPatternIdx = 0;
+let radiusSizeIdx     = 1;
 let palette           = PALETTES[0];
 let rotVelocity       = 0;
 let lastShakeTime     = 0;
+
+// 画笔效果
+let effectFade     = false;
+let effectGlow     = false;
+let effectVelocity = false;
+let effectRainbow  = false;
+let effectParticle = false;
+let strokeHue      = 0;
+
+// 撤销历史
+let undoHistory = [];
 
 // ── Canvas ────────────────────────────────────
 const canvas = document.getElementById('mainCanvas');
@@ -215,7 +238,7 @@ function resizeCanvas() {
   W      = window.innerWidth;
   H      = window.innerHeight;
   cx     = W / 2; cy = H / 2;
-  radius = Math.min(W, H) * 0.52;
+  radius = Math.min(W, H) * RADIUS_RATIOS[radiusSizeIdx];
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   canvas.width  = Math.round(W * dpr);
@@ -226,35 +249,37 @@ function resizeCanvas() {
   trailCanvas.height = Math.round(H * dpr);
   trailCtx           = trailCanvas.getContext('2d');
   trailCtx.scale(dpr, dpr);
-  trailCtx.lineCap = 'round'; trailCtx.lineJoin = 'round';
+  trailCtx.lineCap  = 'round';
+  trailCtx.lineJoin = 'round';
+  undoHistory = [];
 }
 
-// ── 旋转状态 ──────────────────────────────────
+// ── 旋转 ──────────────────────────────────────
 let autoAngle  = 0;
 let tiltAngle  = 0;
 let tiltTarget = 0;
 
-// ── 工具函数 ──────────────────────────────────
+// ── 工具 ──────────────────────────────────────
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 function hexToRgb(hex) {
   const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  return m ? { r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16) } : null;
+  return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
 }
 
-// ── 漂浮粒子（数字模式）─────────────────────
+// ── 漂浮粒子（数字模式）──────────────────────
 let floaters = [];
 function makeFloater() {
   const pool = currentShapeMode === 'circle' ? ['circle']
              : currentShapeMode === 'star'   ? ['star']
              : ['circle','circle','star'];
   return {
-    r: 30 + Math.random() * (radius * 0.82),
-    angle: Math.random() * (SECTOR_ANGLE * 0.5),
-    size:  4 + Math.random() * 10,
-    angSpeed: (0.00015 + Math.random() * 0.0004) * (Math.random() > 0.5 ? 1 : -1),
-    colorIdx: Math.floor(Math.random() * palette.colors.length),
-    alpha: 0.45 + Math.random() * 0.45,
-    shape: pool[Math.floor(Math.random() * pool.length)],
+    r:          30 + Math.random() * (radius * 0.82),
+    angle:      Math.random() * (SECTOR_ANGLE * 0.5),
+    size:       4 + Math.random() * 10,
+    angSpeed:   (0.00015 + Math.random() * 0.0004) * (Math.random() > 0.5 ? 1 : -1),
+    colorIdx:   Math.floor(Math.random() * palette.colors.length),
+    alpha:      0.45 + Math.random() * 0.45,
+    shape:      pool[Math.floor(Math.random() * pool.length)],
     pulsePhase: Math.random() * Math.PI * 2,
     pulseSpd:   0.02 + Math.random() * 0.03,
   };
@@ -275,15 +300,14 @@ function drawStar(c, x, y, size) {
   for (let i = 0; i < 10; i++) {
     const a = (i * Math.PI) / 5 - Math.PI / 2;
     const r = i % 2 === 0 ? size : inner;
-    if (i === 0) c.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
-    else         c.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+    i === 0 ? c.moveTo(x + r*Math.cos(a), y + r*Math.sin(a))
+            : c.lineTo(x + r*Math.cos(a), y + r*Math.sin(a));
   }
   c.closePath(); c.fill();
 }
 
-// ── 玻璃片（传统模式）───────────────────────
+// ── 玻璃片（传统模式）────────────────────────
 let glassPieces = [];
-
 function makeGlassPieceFromPattern(pat) {
   const sides    = pat.sides[Math.floor(Math.random() * pat.sides.length)];
   const baseSize = pat.sizeMin + Math.random() * (pat.sizeMax - pat.sizeMin);
@@ -297,34 +321,28 @@ function makeGlassPieceFromPattern(pat) {
   return {
     r:         (pat.rMinR + Math.random() * (pat.rMaxR - pat.rMinR)) * radius,
     angle:     Math.random() * (SECTOR_ANGLE * 0.5),
-    pts,
-    colorIdx:  Math.floor(Math.random() * palette.colors.length),
-    alpha:     pat.aMin + Math.random() * pat.aRng,
-    rotation:  Math.random() * Math.PI * 2,
-    angSpeed:  0,
-    rotSpeed:  0,
-    burstTime: 0,
+    pts, colorIdx: Math.floor(Math.random() * palette.colors.length),
+    alpha: pat.aMin + Math.random() * pat.aRng,
+    rotation: Math.random() * Math.PI * 2,
+    angSpeed: 0, rotSpeed: 0, burstTime: 0,
   };
 }
-
 function createGlassPieces() {
   const pat = PATTERNS[currentPatternIdx];
   glassPieces = Array.from({ length: pat.count }, () => makeGlassPieceFromPattern(pat));
 }
-
 function shuffleGlassPieces(gentle) {
   const spd = gentle ? 0.0012 : 0.0025;
   const rsp = gentle ? 0.0015 : 0.005;
   const dur = gentle ? 700    : 1400;
   for (const g of glassPieces) {
-    g.angSpeed  = (spd * 0.5 + Math.random() * spd) * (Math.random() > 0.5 ? 1 : -1);
-    g.rotSpeed  = (rsp * 0.5 + Math.random() * rsp) * (Math.random() > 0.5 ? 1 : -1);
+    g.angSpeed  = (spd*0.5 + Math.random()*spd) * (Math.random() > 0.5 ? 1 : -1);
+    g.rotSpeed  = (rsp*0.5 + Math.random()*rsp) * (Math.random() > 0.5 ? 1 : -1);
     g.burstTime = dur;
     if (!gentle && Math.random() > 0.45)
       g.colorIdx = Math.floor(Math.random() * palette.colors.length);
   }
 }
-
 function updateGlassPieces(dt) {
   for (const g of glassPieces) {
     if (g.burstTime <= 0) continue;
@@ -332,25 +350,22 @@ function updateGlassPieces(dt) {
     g.rotation += g.rotSpeed * dt;
     g.burstTime -= dt;
     const decay = Math.pow(0.985, dt / 16);
-    g.angSpeed *= decay;
-    g.rotSpeed *= decay;
+    g.angSpeed *= decay; g.rotSpeed *= decay;
     if (g.burstTime <= 0) { g.angSpeed = 0; g.rotSpeed = 0; }
     while (g.angle > SECTOR_ANGLE * 0.5) g.angle -= SECTOR_ANGLE * 0.5;
     while (g.angle < 0)                  g.angle += SECTOR_ANGLE * 0.5;
   }
 }
-
 function renderGlassPiece(c, gx, gy, rot, pts, color, alpha) {
   const size = pts.reduce((mx, p) => Math.max(mx, Math.sqrt(p.x*p.x + p.y*p.y)), 0);
   c.save();
   c.translate(gx, gy); c.rotate(rot); c.globalAlpha = alpha;
-  c.beginPath();
-  c.moveTo(pts[0].x, pts[0].y);
+  c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
   c.closePath();
   const rgb = hexToRgb(color);
   if (rgb) {
-    const gr = c.createLinearGradient(-size*.7,-size*.7, size*.7, size*.7);
+    const gr = c.createLinearGradient(-size*.7,-size*.7, size*.7,size*.7);
     gr.addColorStop(0,    `rgba(${clamp(rgb.r+130,0,255)},${clamp(rgb.g+130,0,255)},${clamp(rgb.b+130,0,255)},0.92)`);
     gr.addColorStop(0.45, `rgba(${rgb.r},${rgb.g},${rgb.b},0.78)`);
     gr.addColorStop(1,    `rgba(${clamp(rgb.r-55,0,255)},${clamp(rgb.g-55,0,255)},${clamp(rgb.b-55,0,255)},0.88)`);
@@ -359,13 +374,13 @@ function renderGlassPiece(c, gx, gy, rot, pts, color, alpha) {
   c.fill();
   c.strokeStyle = 'rgba(255,255,255,0.62)'; c.lineWidth = 1.6; c.stroke();
   c.save();
-  c.translate(pts[0].x * 0.3, pts[0].y * 0.3); c.rotate(-Math.PI * 0.3);
-  c.beginPath(); c.ellipse(0, 0, size*0.22, size*0.09, 0, 0, Math.PI*2);
-  c.fillStyle = 'rgba(255,255,255,0.34)'; c.globalAlpha = alpha * 0.7; c.fill();
+  c.translate(pts[0].x*0.3, pts[0].y*0.3); c.rotate(-Math.PI*0.3);
+  c.beginPath(); c.ellipse(0,0, size*0.22, size*0.09, 0,0,Math.PI*2);
+  c.fillStyle = 'rgba(255,255,255,0.34)'; c.globalAlpha = alpha*0.7; c.fill();
   c.restore(); c.restore();
 }
 
-// ── 笔触（数字模式）──────────────────────────
+// ── 笔触映射 ──────────────────────────────────
 function pickColor() { return palette.colors[Math.floor(Math.random() * palette.colors.length)]; }
 
 function mapToWedge(sx, sy) {
@@ -376,15 +391,88 @@ function mapToWedge(sx, sy) {
   th = ((th % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
   th = th % SECTOR_ANGLE;
   if (th > SECTOR_ANGLE / 2) th = SECTOR_ANGLE - th;
-  return { x: cx + r * Math.cos(th), y: cy + r * Math.sin(th) };
+  return { x: cx + r*Math.cos(th), y: cy + r*Math.sin(th) };
 }
 
-function strokeBetween(x1, y1, x2, y2, color) {
-  trailCtx.beginPath();
-  trailCtx.strokeStyle = color; trailCtx.lineWidth = STROKE_WIDTH;
-  trailCtx.globalAlpha = 0.92;
-  trailCtx.moveTo(x1, y1); trailCtx.lineTo(x2, y2); trailCtx.stroke();
-  trailCtx.globalAlpha = 1;
+// ── 画笔效果核心 ──────────────────────────────
+
+function scatterParticles(x1, y1, x2, y2, baseColor) {
+  const dx = x2-x1, dy = y2-y1;
+  const dist  = Math.sqrt(dx*dx + dy*dy);
+  const steps = Math.max(1, Math.floor(dist / 6));
+  trailCtx.save();
+  for (let i = 0; i <= steps; i++) {
+    const t  = i / steps;
+    const px = x1 + dx*t + (Math.random()-0.5)*14;
+    const py = y1 + dy*t + (Math.random()-0.5)*14;
+    const m  = mapToWedge(px, py);
+    const sz = 1.5 + Math.random() * 5;
+    const pc = effectRainbow ? `hsl(${strokeHue},100%,65%)` : baseColor;
+    if (effectRainbow) strokeHue = (strokeHue + 1) % 360;
+    if (effectGlow) { trailCtx.shadowBlur = 8; trailCtx.shadowColor = pc; }
+    trailCtx.globalAlpha = 0.4 + Math.random() * 0.5;
+    trailCtx.fillStyle   = pc;
+    trailCtx.beginPath(); trailCtx.arc(m.x, m.y, sz, 0, Math.PI*2); trailCtx.fill();
+    trailCtx.shadowBlur = 0;
+  }
+  trailCtx.restore();
+}
+
+function drawToWedge(s, nx, ny) {
+  const p1 = mapToWedge(s.px, s.py);
+  const p2 = mapToWedge(nx, ny);
+
+  // velocity for speed-sensitive width
+  const now    = Date.now();
+  const moveDt = Math.max(now - (s.drawT || now), 8);
+  const dist   = Math.sqrt((nx-s.px)**2 + (ny-s.py)**2);
+  s.drawT      = now;
+  const speed  = dist / moveDt; // px/ms
+
+  if (effectParticle) {
+    scatterParticles(s.px, s.py, nx, ny, s.color);
+  } else {
+    const sc = effectRainbow ? `hsl(${strokeHue},100%,62%)` : s.color;
+    // speed=0→28px, speed=5→3px, clamped
+    const lw = effectVelocity ? clamp(28 - speed * 5, 3, 28) : STROKE_WIDTH;
+    trailCtx.save();
+    if (effectGlow) { trailCtx.shadowBlur = 18; trailCtx.shadowColor = sc; }
+    trailCtx.strokeStyle = sc;
+    trailCtx.lineWidth   = lw;
+    trailCtx.globalAlpha = 0.92;
+    trailCtx.beginPath();
+    trailCtx.moveTo(p1.x, p1.y); trailCtx.lineTo(p2.x, p2.y);
+    trailCtx.stroke();
+    trailCtx.restore();
+    if (effectRainbow) strokeHue = (strokeHue + 3) % 360;
+  }
+}
+
+// ── 撤销 ──────────────────────────────────────
+function saveUndoState() {
+  if (kaleidoscopeMode !== 'digital') return;
+  if (undoHistory.length >= UNDO_MAX) undoHistory.shift();
+  // Save at half logical resolution to keep memory low
+  const snapW = Math.ceil(W * 0.5), snapH = Math.ceil(H * 0.5);
+  const snap  = document.createElement('canvas');
+  snap.width  = snapW; snap.height = snapH;
+  snap.getContext('2d').drawImage(trailCanvas, 0, 0, snapW, snapH);
+  undoHistory.push(snap);
+}
+function undoStroke() {
+  if (!undoHistory.length) return;
+  const prev = undoHistory.pop();
+  trailCtx.clearRect(0, 0, W, H);
+  trailCtx.drawImage(prev, 0, 0, W, H);
+}
+
+// ── 大小 ──────────────────────────────────────
+function setSize(idx) {
+  radiusSizeIdx = idx;
+  radius = Math.min(W, H) * RADIUS_RATIOS[idx];
+  createFloaters();
+  if (kaleidoscopeMode === 'traditional') createGlassPieces();
+  refreshPanel(); closePanel();
 }
 
 // ── 触摸 & 鼠标 ───────────────────────────────
@@ -397,12 +485,12 @@ function applyDragRotation(stroke, nx, ny) {
   const dx2 = nx - cx,        dy2 = ny - cy;
   if (Math.sqrt(dx1*dx1+dy1*dy1) < 25 || Math.sqrt(dx2*dx2+dy2*dy2) < 25) return;
   let da = getAngleFromCenter(nx, ny) - getAngleFromCenter(stroke.px, stroke.py);
-  while (da >  Math.PI) da -= 2 * Math.PI;
-  while (da < -Math.PI) da += 2 * Math.PI;
-  const now = Date.now();
+  while (da >  Math.PI) da -= 2*Math.PI;
+  while (da < -Math.PI) da += 2*Math.PI;
+  const now    = Date.now();
   const moveDt = Math.max(now - (stroke.lastT || now), 8);
   stroke.lastT = now;
-  autoAngle += da;
+  autoAngle   += da;
   const MAX_VEL = 0.02;
   rotVelocity = Math.max(-MAX_VEL, Math.min(MAX_VEL, da / moveDt));
 }
@@ -426,13 +514,8 @@ canvas.addEventListener('touchmove', e => {
     const ddx = t.clientX - s.sx, ddy = t.clientY - s.sy;
     if (!s.moved && Math.sqrt(ddx*ddx + ddy*ddy) > TAP_MOVE_PX) s.moved = true;
     if (s.moved) {
-      if (kaleidoscopeMode === 'digital') {
-        const p1 = mapToWedge(s.px, s.py);
-        const p2 = mapToWedge(t.clientX, t.clientY);
-        strokeBetween(p1.x, p1.y, p2.x, p2.y, s.color);
-      } else {
-        applyDragRotation(s, t.clientX, t.clientY);
-      }
+      if (kaleidoscopeMode === 'digital') drawToWedge(s, t.clientX, t.clientY);
+      else applyDragRotation(s, t.clientX, t.clientY);
     }
     s.px = t.clientX; s.py = t.clientY;
   }
@@ -442,9 +525,12 @@ canvas.addEventListener('touchend', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const s = activeStrokes[t.identifier];
-    if (s && !s.moved && (Date.now() - s.t0) < TAP_TIME_MS) {
-      if (kaleidoscopeMode === 'digital') cyclePalette();
-      else shuffleGlassPieces(false);
+    if (s) {
+      if (s.moved && kaleidoscopeMode === 'digital') saveUndoState();
+      if (!s.moved && (Date.now() - s.t0) < TAP_TIME_MS) {
+        if (kaleidoscopeMode === 'digital') cyclePalette();
+        else shuffleGlassPieces(false);
+      }
     }
     delete activeStrokes[t.identifier];
   }
@@ -464,31 +550,35 @@ canvas.addEventListener('mousemove', e => {
   const ddx = e.clientX - mouse.sx, ddy = e.clientY - mouse.sy;
   if (!mouse.moved && Math.sqrt(ddx*ddx + ddy*ddy) > TAP_MOVE_PX) mouse.moved = true;
   if (mouse.moved) {
-    if (kaleidoscopeMode === 'digital') {
-      const p1 = mapToWedge(mouse.px, mouse.py);
-      const p2 = mapToWedge(e.clientX, e.clientY);
-      strokeBetween(p1.x, p1.y, p2.x, p2.y, mouse.color);
-    } else {
-      applyDragRotation(mouse, e.clientX, e.clientY);
-    }
+    if (kaleidoscopeMode === 'digital') drawToWedge(mouse, e.clientX, e.clientY);
+    else applyDragRotation(mouse, e.clientX, e.clientY);
   }
   mouse.px = e.clientX; mouse.py = e.clientY;
 });
 canvas.addEventListener('mouseup', () => {
-  if (mouse && !mouse.moved && (Date.now() - mouse.t0) < TAP_TIME_MS) {
-    if (kaleidoscopeMode === 'digital') cyclePalette();
-    else shuffleGlassPieces(false);
+  if (mouse) {
+    if (mouse.moved && kaleidoscopeMode === 'digital') saveUndoState();
+    if (!mouse.moved && (Date.now() - mouse.t0) < TAP_TIME_MS) {
+      if (kaleidoscopeMode === 'digital') cyclePalette();
+      else shuffleGlassPieces(false);
+    }
   }
   mouse = null;
 });
 canvas.addEventListener('mouseleave', () => { mouse = null; });
 
-// ── 陀螺仪 & 晃动检测 ────────────────────────
+// ── 撤销快捷键 ────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && kaleidoscopeMode === 'digital') {
+    e.preventDefault(); undoStroke();
+  }
+});
+
+// ── 陀螺仪 & 晃动 ─────────────────────────────
 function onOrientation(e) {
   const gamma = e.gamma || 0, beta = e.beta || 0;
   tiltTarget = (gamma / 90) * Math.PI * 0.75 + (beta / 180) * Math.PI * 0.15;
 }
-
 function onMotion(e) {
   if (kaleidoscopeMode !== 'traditional') return;
   const acc = e.acceleration;
@@ -496,8 +586,7 @@ function onMotion(e) {
   const mag = Math.sqrt((acc.x||0)**2 + (acc.y||0)**2 + (acc.z||0)**2);
   const now = Date.now();
   if (mag > SHAKE_THRESHOLD && now - lastShakeTime > 1000) {
-    lastShakeTime = now;
-    shuffleGlassPieces(false);
+    lastShakeTime = now; shuffleGlassPieces(false);
   }
 }
 
@@ -511,7 +600,7 @@ function renderKaleidoscope() {
     ctx.save();
     ctx.rotate((autoAngle + tiltAngle) + k * SECTOR_ANGLE);
     if (k % 2 === 1) ctx.scale(1, -1);
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, radius * 1.6, 0, SECTOR_ANGLE); ctx.closePath(); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, radius*1.6, 0, SECTOR_ANGLE); ctx.closePath(); ctx.clip();
     if (kaleidoscopeMode === 'digital') {
       ctx.drawImage(trailCanvas, -cx, -cy, W, H);
       for (const f of floaters) {
@@ -551,6 +640,14 @@ function loop(ts) {
 
   if (kaleidoscopeMode === 'digital') {
     autoAngle += AUTO_ROTATE_SPD * dt;
+    // 渐隐效果：每帧微量擦除笔触
+    if (effectFade) {
+      trailCtx.globalCompositeOperation = 'destination-out';
+      trailCtx.globalAlpha = 0.006 * (dt / 16);
+      trailCtx.fillRect(0, 0, W, H);
+      trailCtx.globalCompositeOperation = 'source-over';
+      trailCtx.globalAlpha = 1;
+    }
   } else {
     autoAngle  += rotVelocity * dt;
     rotVelocity *= Math.pow(ROT_FRICTION, dt / 16);
@@ -565,65 +662,72 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
-// ── 配色 / 形状 / 模式 / 图案 ────────────────
+// ── 状态切换 ──────────────────────────────────
 function cyclePalette() {
   currentPaletteIdx = (currentPaletteIdx + 1) % PALETTES.length;
-  palette = PALETTES[currentPaletteIdx];
-  refreshPanel();
+  palette = PALETTES[currentPaletteIdx]; refreshPanel();
 }
 function setPalette(idx) {
-  currentPaletteIdx = idx; palette = PALETTES[idx];
-  refreshPanel(); closePanel();
+  currentPaletteIdx = idx; palette = PALETTES[idx]; refreshPanel(); closePanel();
 }
 function setShapeMode(mode) {
   currentShapeMode = mode;
-  floaters.forEach(f => {
-    const pool = mode==='circle'?['circle']:mode==='star'?['star']:['circle','circle','star'];
-    f.shape = pool[Math.floor(Math.random() * pool.length)];
-  });
+  const pool = mode==='circle'?['circle']:mode==='star'?['star']:['circle','circle','star'];
+  floaters.forEach(f => { f.shape = pool[Math.floor(Math.random()*pool.length)]; });
   refreshPanel();
 }
 function setKaleidoscopeMode(mode) {
-  kaleidoscopeMode = mode;
-  rotVelocity = 0;
-  if (mode === 'traditional') createGlassPieces();
+  kaleidoscopeMode = mode; rotVelocity = 0;
+  if (mode === 'traditional') { createGlassPieces(); undoHistory = []; }
   refreshPanel(); closePanel();
 }
 function setPattern(idx) {
-  currentPatternIdx = idx;
-  createGlassPieces();
-  shuffleGlassPieces(true);  // gentle tumble into position
+  currentPatternIdx = idx; createGlassPieces(); shuffleGlassPieces(true);
   refreshPanel(); closePanel();
 }
 
 // ── 面板 UI ───────────────────────────────────
-const panel       = document.getElementById('panel');
-const paletteList = document.getElementById('paletteList');
-const shapeRow    = document.getElementById('shapeRow');
-const modeRow     = document.getElementById('modeRow');
-const patternGrid = document.getElementById('patternGrid');
+const panel          = document.getElementById('panel');
+const paletteList    = document.getElementById('paletteList');
+const shapeRow       = document.getElementById('shapeRow');
+const modeRow        = document.getElementById('modeRow');
+const sizeRow        = document.getElementById('sizeRow');
+const patternGrid    = document.getElementById('patternGrid');
+const effectGrid     = document.getElementById('effectGrid');
 const shapeSection   = document.getElementById('shapeSection');
 const patternSection = document.getElementById('patternSection');
-let panelOpen = false;
+const effectSection  = document.getElementById('effectSection');
+let   panelOpen      = false;
 
 function refreshPanel() {
+  const isTrad = kaleidoscopeMode === 'traditional';
+
   // 样式
   modeRow.innerHTML = '';
   KAL_MODES.forEach(m => {
     const btn = document.createElement('button');
-    btn.className = 'mode-btn' + (m.id === kaleidoscopeMode ? ' active' : '');
+    btn.className = 'row-btn' + (m.id === kaleidoscopeMode ? ' active' : '');
     btn.textContent = m.label;
     btn.addEventListener('click', () => setKaleidoscopeMode(m.id));
     modeRow.appendChild(btn);
   });
 
-  // 图案（仅传统模式）
-  const isTrad = kaleidoscopeMode === 'traditional';
+  // 大小
+  sizeRow.innerHTML = '';
+  ['小','中','大'].forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'row-btn' + (i === radiusSizeIdx ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => setSize(i));
+    sizeRow.appendChild(btn);
+  });
+
+  // 图案（传统模式）
   patternSection.style.display = isTrad ? '' : 'none';
   patternGrid.innerHTML = '';
   PATTERNS.forEach((p, i) => {
     const btn = document.createElement('button');
-    btn.className = 'pattern-btn' + (i === currentPatternIdx ? ' active' : '');
+    btn.className = 'grid-btn' + (i === currentPatternIdx ? ' active' : '');
     btn.textContent = p.name;
     btn.addEventListener('click', () => setPattern(i));
     patternGrid.appendChild(btn);
@@ -645,15 +749,34 @@ function refreshPanel() {
     paletteList.appendChild(item);
   });
 
-  // 形状（仅数字模式）
+  // 形状（数字模式）
   shapeSection.style.display = isTrad ? 'none' : '';
   shapeRow.innerHTML = '';
   SHAPE_MODES.forEach(m => {
     const btn = document.createElement('button');
-    btn.className = 'shape-btn' + (m.id === currentShapeMode ? ' active' : '');
+    btn.className = 'row-btn icon' + (m.id === currentShapeMode ? ' active' : '');
     btn.textContent = m.label; btn.title = m.title;
     btn.addEventListener('click', () => setShapeMode(m.id));
     shapeRow.appendChild(btn);
+  });
+
+  // 画笔效果（数字模式）
+  effectSection.style.display = isTrad ? 'none' : '';
+  effectGrid.innerHTML = '';
+  const EFFECTS = [
+    { label:'渐隐', get:()=>effectFade,     set:v=>{ effectFade     = v; } },
+    { label:'发光', get:()=>effectGlow,     set:v=>{ effectGlow     = v; } },
+    { label:'速感', get:()=>effectVelocity, set:v=>{ effectVelocity = v; } },
+    { label:'彩虹', get:()=>effectRainbow,  set:v=>{ effectRainbow  = v; if (v) strokeHue = 0; } },
+    { label:'粒子拖尾', full:true, get:()=>effectParticle, set:v=>{ effectParticle = v; } },
+  ];
+  EFFECTS.forEach(ef => {
+    const on  = ef.get();
+    const btn = document.createElement('button');
+    btn.className = 'grid-btn' + (on ? ' active effect-active' : '') + (ef.full ? ' full' : '');
+    btn.textContent = ef.label;
+    btn.addEventListener('click', () => { ef.set(!ef.get()); refreshPanel(); });
+    effectGrid.appendChild(btn);
   });
 }
 
@@ -666,12 +789,40 @@ document.addEventListener('click', e => {
   if (panelOpen && !panel.contains(e.target) && e.target !== document.getElementById('paletteBtn')) closePanel();
 });
 
-document.getElementById('clearBtn').addEventListener('click', () => {
-  if (kaleidoscopeMode === 'digital') trailCtx.clearRect(0, 0, W, H);
-  else shuffleGlassPieces(false);
-});
+// ── ↺ 按钮：短按清空，长按撤销 ───────────────
+const clearBtn = document.getElementById('clearBtn');
+let clearLongTimer   = null;
+let clearDidLongPress = false;
 
-// ── 开始按钮 ──────────────────────────────────
+function clearStart() {
+  clearDidLongPress = false;
+  clearLongTimer = setTimeout(() => {
+    clearDidLongPress = true;
+    if (kaleidoscopeMode === 'digital') {
+      undoStroke();
+      clearBtn.classList.add('undo-flash');
+      setTimeout(() => clearBtn.classList.remove('undo-flash'), 300);
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+  }, 550);
+}
+function clearEnd() {
+  clearTimeout(clearLongTimer); clearLongTimer = null;
+  if (!clearDidLongPress) {
+    if (kaleidoscopeMode === 'digital') { undoHistory = []; trailCtx.clearRect(0, 0, W, H); }
+    else shuffleGlassPieces(false);
+  }
+  clearDidLongPress = false;
+}
+function clearCancel() {
+  clearTimeout(clearLongTimer); clearLongTimer = null; clearDidLongPress = false;
+}
+
+clearBtn.addEventListener('pointerdown',  e => { e.preventDefault(); clearStart(); });
+clearBtn.addEventListener('pointerup',    clearEnd);
+clearBtn.addEventListener('pointerleave', clearCancel);
+
+// ── 开始 ──────────────────────────────────────
 document.getElementById('startBtn').addEventListener('click', async () => {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -684,19 +835,16 @@ document.getElementById('startBtn').addEventListener('click', async () => {
     } catch (_) {}
   } else {
     if (typeof DeviceOrientationEvent !== 'undefined') window.addEventListener('deviceorientation', onOrientation);
-    if (typeof DeviceMotionEvent    !== 'undefined') window.addEventListener('devicemotion', onMotion);
+    if (typeof DeviceMotionEvent      !== 'undefined') window.addEventListener('devicemotion', onMotion);
   }
   document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('clearBtn').style.display    = 'flex';
+  clearBtn.style.display                                = 'flex';
   document.getElementById('paletteBtn').style.display  = 'flex';
-  resizeCanvas();
-  createFloaters();
-  requestAnimationFrame(loop);
+  resizeCanvas(); createFloaters(); requestAnimationFrame(loop);
 });
 
 window.addEventListener('resize', () => {
-  resizeCanvas();
-  createFloaters();
+  resizeCanvas(); createFloaters();
   if (kaleidoscopeMode === 'traditional') createGlassPieces();
 });
 </script>

@@ -23,7 +23,9 @@
       "Bash(curl -s http://localhost:9222/json)",
       "Bash(screencapture -x /tmp/kal_trad2.png)",
       "Bash(python3)",
-      "Bash(screencapture -x /tmp/kal_trad3.png)"
+      "Bash(screencapture -x /tmp/kal_trad3.png)",
+      "Bash(git -C /Users/aaron/AAA/Mom/kaleidoscope diff --stat HEAD)",
+      "Bash(git -C /Users/aaron/AAA/Mom/kaleidoscope log --oneline -3)"
     ]
   }
 }
