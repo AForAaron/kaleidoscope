@@ -10,7 +10,20 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git branch *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Skill(run)",
+      "Bash(pkill -f \"python3 -m http.server 8765\")",
+      "Bash(python3 -m http.server 8765)",
+      "Bash(python3 -m http.server 8766)",
+      "Bash(curl -s http://localhost:8766/)",
+      "Bash(open *)",
+      "Bash(osascript *)",
+      "Bash(screencapture -x /tmp/kal_active.png)",
+      "Bash(screencapture -x /tmp/kal_panel.png)",
+      "Bash(curl -s http://localhost:9222/json)",
+      "Bash(screencapture -x /tmp/kal_trad2.png)",
+      "Bash(python3)",
+      "Bash(screencapture -x /tmp/kal_trad3.png)"
     ]
   }
 }
