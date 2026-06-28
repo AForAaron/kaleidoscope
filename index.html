@@ -10,8 +10,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #000;
-      overflow: hidden;
+      background: #000; overflow: hidden;
       width: 100vw; height: 100vh;
       touch-action: none;
       user-select: none; -webkit-user-select: none;
@@ -38,7 +37,7 @@
       transition: transform 0.15s, box-shadow 0.15s;
       -webkit-tap-highlight-color: transparent;
     }
-    #startBtn:active { transform: scale(0.94); box-shadow: 0 0 20px rgba(130,0,255,0.4); }
+    #startBtn:active { transform: scale(0.94); }
     #startBtnIcon { font-size: 2.2rem; }
 
     .ui-btn {
@@ -48,18 +47,17 @@
       font-size: 1.5rem; cursor: pointer;
       display: none; align-items: center; justify-content: center;
       z-index: 50; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-      transition: opacity 0.2s, transform 0.15s;
+      transition: opacity 0.2s, transform 0.15s, border-color 0.2s, color 0.2s;
       -webkit-tap-highlight-color: transparent; line-height: 1;
     }
     .ui-btn:active { opacity: 0.5; transform: scale(0.92); }
     #clearBtn   { bottom: 36px; left: 36px; }
     #paletteBtn { bottom: 36px; right: 36px; font-size: 1.3rem; }
-
-    /* Long-press undo feedback */
     #clearBtn.undo-flash { border-color: rgba(255,200,0,0.8); color: rgba(255,200,0,0.9); }
+    #clearBtn.reset-flash { border-color: rgba(100,200,255,0.8); color: rgba(100,200,255,0.9); }
 
     #panel {
-      position: fixed; bottom: 108px; right: 20px; width: 234px;
+      position: fixed; bottom: 108px; right: 20px; width: 240px;
       background: rgba(10,10,20,0.88);
       border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
       padding: 16px 14px; display: none; flex-direction: column; gap: 14px;
@@ -69,10 +67,9 @@
     }
     .panel-section-title {
       font-size: 0.7rem; color: rgba(255,255,255,0.4);
-      letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px;
+      letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5px;
     }
 
-    /* ── Palette ── */
     .palette-item {
       display: flex; align-items: center; gap: 10px;
       cursor: pointer; padding: 7px 8px; border-radius: 12px;
@@ -84,36 +81,32 @@
     .palette-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
     .palette-name { color: rgba(255,255,255,0.85); font-size: 0.82rem; }
 
-    /* ── Generic small-button row ── */
-    .btn-row { display: flex; gap: 8px; }
+    .btn-row { display: flex; gap: 6px; }
     .row-btn {
-      flex: 1; padding: 8px 4px; border-radius: 10px;
+      flex: 1; padding: 8px 2px; border-radius: 10px;
       border: 1.5px solid rgba(255,255,255,0.15);
       background: transparent; color: rgba(255,255,255,0.6);
-      font-size: 0.82rem; cursor: pointer; text-align: center; line-height: 1.4;
+      font-size: 0.78rem; cursor: pointer; text-align: center; line-height: 1.4;
       transition: background 0.15s, border-color 0.15s;
-      -webkit-tap-highlight-color: transparent;
+      -webkit-tap-highlight-color: transparent; white-space: nowrap;
     }
     .row-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
     .row-btn:active { opacity: 0.6; }
-    /* shape buttons are slightly bigger icon */
-    .row-btn.icon { font-size: 1.2rem; }
+    .row-btn.icon { font-size: 1.2rem; padding: 8px 4px; }
 
-    /* ── Pattern / Effect grid ── */
     .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .grid-btn {
       padding: 8px 4px; border-radius: 10px;
       border: 1.5px solid rgba(255,255,255,0.15);
       background: transparent; color: rgba(255,255,255,0.6);
       font-size: 0.72rem; cursor: pointer; text-align: center; line-height: 1.35;
-      transition: background 0.15s, border-color 0.15s;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
       -webkit-tap-highlight-color: transparent;
     }
     .grid-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); color: #fff; }
     .grid-btn:active { opacity: 0.6; }
-    .grid-btn.full  { grid-column: 1 / -1; }
-    /* active glow tint for effect buttons */
-    .grid-btn.effect-active { border-color: rgba(180,120,255,0.6); color: rgba(200,160,255,1); }
+    .grid-btn.full { grid-column: 1 / -1; }
+    .grid-btn.effect-on { border-color: rgba(170,110,255,0.65); color: rgba(210,170,255,1); background: rgba(130,60,255,0.12); }
   </style>
 </head>
 <body>
@@ -126,8 +119,7 @@
 </div>
 
 <canvas id="mainCanvas"></canvas>
-
-<button class="ui-btn" id="clearBtn" title="清空 / 长按撤销">↺</button>
+<button class="ui-btn" id="clearBtn" title="重置 / 长按撤销">↺</button>
 <button class="ui-btn" id="paletteBtn" title="设置">🎨</button>
 
 <div id="panel">
@@ -138,6 +130,14 @@
   <div>
     <div class="panel-section-title">大小</div>
     <div class="btn-row" id="sizeRow"></div>
+  </div>
+  <div id="sectorSection">
+    <div class="panel-section-title">折叠数</div>
+    <div class="btn-row" id="sectorRow"></div>
+  </div>
+  <div id="speedSection">
+    <div class="panel-section-title">旋转速度</div>
+    <div class="btn-row" id="speedRow"></div>
   </div>
   <div id="patternSection">
     <div class="panel-section-title">图案</div>
@@ -152,7 +152,7 @@
     <div class="btn-row" id="shapeRow"></div>
   </div>
   <div id="effectSection">
-    <div class="panel-section-title">画笔效果</div>
+    <div class="panel-section-title">画笔效果（可叠加）</div>
     <div class="grid-2col" id="effectGrid"></div>
   </div>
 </div>
@@ -161,18 +161,36 @@
 'use strict';
 
 // ── 常量 ──────────────────────────────────────
-const SECTORS         = 12;
-const SECTOR_ANGLE    = (Math.PI * 2) / SECTORS;
-const AUTO_ROTATE_SPD = 0.00025;
-const TILT_LERP       = 0.05;
-const STROKE_WIDTH    = 16;
-const TAP_MOVE_PX     = 10;
-const TAP_TIME_MS     = 250;
-const FLOAT_COUNT     = 24;
-const SHAKE_THRESHOLD = 12;
-const ROT_FRICTION    = 0.978;
-const RADIUS_RATIOS   = [0.42, 0.56, 0.72];
-const UNDO_MAX        = 5;
+const AUTO_ROTATE_BASE = 0.00025;
+const TILT_LERP        = 0.05;
+const STROKE_WIDTH     = 16;
+const TAP_MOVE_PX      = 10;
+const TAP_TIME_MS      = 250;
+const FLOAT_COUNT      = 24;
+const SHAKE_THRESHOLD  = 12;
+const ROT_FRICTION     = 0.978;
+const RADIUS_RATIOS    = [0.42, 0.56, 0.72];
+const UNDO_MAX         = 5;
+const SECTOR_OPTIONS   = [4, 6, 8, 12, 16];
+// 速度分布拉大，让慢端更明显
+const SPEED_OPTIONS    = [
+  { label: '极慢', mult: 0.06 },
+  { label: '慢',   mult: 0.35 },
+  { label: '正常', mult: 1.0  },
+  { label: '快',   mult: 2.5  },
+  { label: '极快', mult: 6.0  },
+];
+
+// ── 默认值（用于重置）──────────────────────────
+const DEFAULTS = {
+  paletteIdx:    0,
+  shapeMode:     'mixed',
+  kalMode:       'digital',
+  patternIdx:    0,
+  sizeIdx:       1,
+  sectorCount:   12,
+  speedIdx:      2,
+};
 
 // ── 配色 ──────────────────────────────────────
 const PALETTES = [
@@ -183,18 +201,15 @@ const PALETTES = [
   { name: '宝石彩绘',   colors: ['#c0392b','#2471a3','#1e8449','#d4ac0d','#7d3c98','#e8f8f5'], bg: '#08080e' },
   { name: '花窗玻璃',   colors: ['#1a237e','#880000','#0d5c0d','#cc6600','#4a0072','#cce8ff'], bg: '#03030a' },
 ];
-
 const SHAPE_MODES = [
   { id: 'circle', label: '●', title: '圆点' },
   { id: 'star',   label: '★', title: '星形' },
   { id: 'mixed',  label: '✦', title: '混搭' },
 ];
-
 const KAL_MODES = [
   { id: 'digital',     label: '✦ 数字' },
   { id: 'traditional', label: '◆ 传统' },
 ];
-
 const PATTERNS = [
   { id:'gem',     name:'宝石花', sides:[3],     count:26, sizeMin:10, sizeMax:30, rMinR:0.04, rMaxR:0.80, iMin:0.60, iRng:0.40, sx:1.0,  sy:1.0,  ao:0,          aMin:0.60, aRng:0.35 },
   { id:'crystal', name:'水晶格', sides:[4],     count:20, sizeMin:14, sizeMax:42, rMinR:0.06, rMaxR:0.82, iMin:0.78, iRng:0.22, sx:0.65, sy:1.35, ao:-Math.PI/2, aMin:0.65, aRng:0.30 },
@@ -207,25 +222,25 @@ const PATTERNS = [
 ];
 
 // ── 状态 ──────────────────────────────────────
-let currentPaletteIdx = 0;
-let currentShapeMode  = 'mixed';
-let kaleidoscopeMode  = 'digital';
-let currentPatternIdx = 0;
-let radiusSizeIdx     = 1;
-let palette           = PALETTES[0];
+let currentPaletteIdx = DEFAULTS.paletteIdx;
+let currentShapeMode  = DEFAULTS.shapeMode;
+let kaleidoscopeMode  = DEFAULTS.kalMode;
+let currentPatternIdx = DEFAULTS.patternIdx;
+let radiusSizeIdx     = DEFAULTS.sizeIdx;
+let sectorCount       = DEFAULTS.sectorCount;
+let sectorAngle       = (Math.PI * 2) / DEFAULTS.sectorCount;
+let rotSpeedMultIdx   = DEFAULTS.speedIdx;
+let palette           = PALETTES[DEFAULTS.paletteIdx];
 let rotVelocity       = 0;
 let lastShakeTime     = 0;
 
-// 画笔效果
 let effectFade     = false;
 let effectGlow     = false;
 let effectVelocity = false;
 let effectRainbow  = false;
 let effectParticle = false;
 let strokeHue      = 0;
-
-// 撤销历史
-let undoHistory = [];
+let undoHistory    = [];
 
 // ── Canvas ────────────────────────────────────
 const canvas = document.getElementById('mainCanvas');
@@ -239,18 +254,15 @@ function resizeCanvas() {
   H      = window.innerHeight;
   cx     = W / 2; cy = H / 2;
   radius = Math.min(W, H) * RADIUS_RATIOS[radiusSizeIdx];
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
-  canvas.width  = Math.round(W * dpr);
-  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px'; canvas.style.height = H + 'px';
+  canvas.width  = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   ctx.scale(dpr, dpr);
-  trailCanvas        = document.createElement('canvas');
+  trailCanvas = document.createElement('canvas');
   trailCanvas.width  = Math.round(W * dpr);
   trailCanvas.height = Math.round(H * dpr);
-  trailCtx           = trailCanvas.getContext('2d');
+  trailCtx = trailCanvas.getContext('2d');
   trailCtx.scale(dpr, dpr);
-  trailCtx.lineCap  = 'round';
-  trailCtx.lineJoin = 'round';
+  trailCtx.lineCap = 'round'; trailCtx.lineJoin = 'round';
   undoHistory = [];
 }
 
@@ -269,12 +281,12 @@ function hexToRgb(hex) {
 // ── 漂浮粒子（数字模式）──────────────────────
 let floaters = [];
 function makeFloater() {
-  const pool = currentShapeMode === 'circle' ? ['circle']
-             : currentShapeMode === 'star'   ? ['star']
+  const pool = currentShapeMode==='circle' ? ['circle']
+             : currentShapeMode==='star'   ? ['star']
              : ['circle','circle','star'];
   return {
     r:          30 + Math.random() * (radius * 0.82),
-    angle:      Math.random() * (SECTOR_ANGLE * 0.5),
+    angle:      Math.random() * (sectorAngle * 0.5),
     size:       4 + Math.random() * 10,
     angSpeed:   (0.00015 + Math.random() * 0.0004) * (Math.random() > 0.5 ? 1 : -1),
     colorIdx:   Math.floor(Math.random() * palette.colors.length),
@@ -289,8 +301,8 @@ function updateFloaters(dt) {
   for (const f of floaters) {
     f.angle      += f.angSpeed * dt;
     f.pulsePhase += f.pulseSpd;
-    if (f.angle > SECTOR_ANGLE * 0.5) f.angle -= SECTOR_ANGLE * 0.5;
-    if (f.angle < 0)                  f.angle += SECTOR_ANGLE * 0.5;
+    if (f.angle > sectorAngle * 0.5) f.angle -= sectorAngle * 0.5;
+    if (f.angle < 0)                 f.angle += sectorAngle * 0.5;
     if (Math.random() > 0.998) f.colorIdx = (f.colorIdx + 1) % palette.colors.length;
   }
 }
@@ -308,6 +320,7 @@ function drawStar(c, x, y, size) {
 
 // ── 玻璃片（传统模式）────────────────────────
 let glassPieces = [];
+
 function makeGlassPieceFromPattern(pat) {
   const sides    = pat.sides[Math.floor(Math.random() * pat.sides.length)];
   const baseSize = pat.sizeMin + Math.random() * (pat.sizeMax - pat.sizeMin);
@@ -319,44 +332,83 @@ function makeGlassPieceFromPattern(pat) {
                y: baseSize * irr * pat.sy * Math.sin(a) });
   }
   return {
-    r:         (pat.rMinR + Math.random() * (pat.rMaxR - pat.rMinR)) * radius,
-    angle:     Math.random() * (SECTOR_ANGLE * 0.5),
-    pts, colorIdx: Math.floor(Math.random() * palette.colors.length),
-    alpha: pat.aMin + Math.random() * pat.aRng,
-    rotation: Math.random() * Math.PI * 2,
-    angSpeed: 0, rotSpeed: 0, burstTime: 0,
+    r:            (pat.rMinR + Math.random() * (pat.rMaxR - pat.rMinR)) * radius,
+    angle:        Math.random() * (sectorAngle * 0.5),
+    pts,
+    colorIdx:     Math.floor(Math.random() * palette.colors.length),
+    alpha:        pat.aMin + Math.random() * pat.aRng,
+    displayAlpha: 0,                       // 渐入起点
+    fadeDelay:    Math.random() * 300,     // 错峰出现（ms）
+    rotation:     Math.random() * Math.PI * 2,
+    angSpeed:     0,
+    rotSpeed:     0,
+    vr:           0,
+    friction:     0.972,                   // 默认摩擦（shuffleGlassPieces 会覆盖）
   };
 }
+
 function createGlassPieces() {
   const pat = PATTERNS[currentPatternIdx];
   glassPieces = Array.from({ length: pat.count }, () => makeGlassPieceFromPattern(pat));
 }
+
 function shuffleGlassPieces(gentle) {
-  const spd = gentle ? 0.0012 : 0.0025;
-  const rsp = gentle ? 0.0015 : 0.005;
-  const dur = gentle ? 700    : 1400;
+  const spd = gentle ? 0.0010 : 0.0022;
+  const rsp = gentle ? 0.0012 : 0.0045;
+  const vrs = gentle ? 0.030  : 0.085;
   for (const g of glassPieces) {
-    g.angSpeed  = (spd*0.5 + Math.random()*spd) * (Math.random() > 0.5 ? 1 : -1);
-    g.rotSpeed  = (rsp*0.5 + Math.random()*rsp) * (Math.random() > 0.5 ? 1 : -1);
-    g.burstTime = dur;
+    g.angSpeed = (spd*0.5 + Math.random()*spd) * (Math.random() > 0.5 ? 1 : -1);
+    g.rotSpeed = (rsp*0.5 + Math.random()*rsp) * (Math.random() > 0.5 ? 1 : -1);
+    g.vr       = (vrs*0.4 + Math.random()*vrs) * (Math.random() > 0.5 ? 1 : -1);
+    // 每片摩擦系数略有不同 → 各自先后自然滑停
+    g.friction = 0.957 + Math.random() * 0.026;
     if (!gentle && Math.random() > 0.45)
       g.colorIdx = Math.floor(Math.random() * palette.colors.length);
   }
 }
+
 function updateGlassPieces(dt) {
+  const rMin = 0.03 * radius;
+  const rMax = 0.95 * radius;
   for (const g of glassPieces) {
-    if (g.burstTime <= 0) continue;
+
+    // ── 渐入 ──
+    if (g.displayAlpha < g.alpha) {
+      if (g.fadeDelay > 0) {
+        g.fadeDelay -= dt;
+      } else {
+        g.displayAlpha = Math.min(g.alpha, g.displayAlpha + g.alpha * dt / 420);
+      }
+    }
+
+    // ── 运动（只有速度不为零时才更新）──
+    const moving = Math.abs(g.angSpeed) > 1e-6 || Math.abs(g.rotSpeed) > 1e-6 || Math.abs(g.vr) > 1e-6;
+    if (!moving) continue;
+
     g.angle    += g.angSpeed * dt;
     g.rotation += g.rotSpeed * dt;
-    g.burstTime -= dt;
-    const decay = Math.pow(0.985, dt / 16);
-    g.angSpeed *= decay; g.rotSpeed *= decay;
-    if (g.burstTime <= 0) { g.angSpeed = 0; g.rotSpeed = 0; }
-    while (g.angle > SECTOR_ANGLE * 0.5) g.angle -= SECTOR_ANGLE * 0.5;
-    while (g.angle < 0)                  g.angle += SECTOR_ANGLE * 0.5;
+    g.r        += g.vr * dt;
+
+    // 径向边界弹性反弹，模拟筒壁/中心碰撞
+    if (g.r < rMin) { g.r = rMin; g.vr =  Math.abs(g.vr) * 0.32; }
+    if (g.r > rMax) { g.r = rMax; g.vr = -Math.abs(g.vr) * 0.32; }
+
+    // 各片用自己的摩擦系数，自然衰减到零
+    const decay = Math.pow(g.friction, dt / 16);
+    g.angSpeed *= decay; g.rotSpeed *= decay; g.vr *= decay;
+
+    // 低于阈值时精确归零，避免无限漂移
+    if (Math.abs(g.angSpeed) < 1e-6) g.angSpeed = 0;
+    if (Math.abs(g.rotSpeed) < 1e-6) g.rotSpeed = 0;
+    if (Math.abs(g.vr)       < 1e-6) g.vr       = 0;
+
+    while (g.angle > sectorAngle * 0.5) g.angle -= sectorAngle * 0.5;
+    while (g.angle < 0)                 g.angle += sectorAngle * 0.5;
   }
 }
+
 function renderGlassPiece(c, gx, gy, rot, pts, color, alpha) {
+  if (alpha <= 0) return;
   const size = pts.reduce((mx, p) => Math.max(mx, Math.sqrt(p.x*p.x + p.y*p.y)), 0);
   c.save();
   c.translate(gx, gy); c.rotate(rot); c.globalAlpha = alpha;
@@ -380,7 +432,7 @@ function renderGlassPiece(c, gx, gy, rot, pts, color, alpha) {
   c.restore(); c.restore();
 }
 
-// ── 笔触映射 ──────────────────────────────────
+// ── 笔触（数字模式）──────────────────────────
 function pickColor() { return palette.colors[Math.floor(Math.random() * palette.colors.length)]; }
 
 function mapToWedge(sx, sy) {
@@ -389,60 +441,46 @@ function mapToWedge(sx, sy) {
   const r  = Math.sqrt(dx*dx + dy*dy);
   let   th = Math.atan2(dy, dx) - total;
   th = ((th % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
-  th = th % SECTOR_ANGLE;
-  if (th > SECTOR_ANGLE / 2) th = SECTOR_ANGLE - th;
+  th = th % sectorAngle;
+  if (th > sectorAngle / 2) th = sectorAngle - th;
   return { x: cx + r*Math.cos(th), y: cy + r*Math.sin(th) };
-}
-
-// ── 画笔效果核心 ──────────────────────────────
-
-function scatterParticles(x1, y1, x2, y2, baseColor) {
-  const dx = x2-x1, dy = y2-y1;
-  const dist  = Math.sqrt(dx*dx + dy*dy);
-  const steps = Math.max(1, Math.floor(dist / 6));
-  trailCtx.save();
-  for (let i = 0; i <= steps; i++) {
-    const t  = i / steps;
-    const px = x1 + dx*t + (Math.random()-0.5)*14;
-    const py = y1 + dy*t + (Math.random()-0.5)*14;
-    const m  = mapToWedge(px, py);
-    const sz = 1.5 + Math.random() * 5;
-    const pc = effectRainbow ? `hsl(${strokeHue},100%,65%)` : baseColor;
-    if (effectRainbow) strokeHue = (strokeHue + 1) % 360;
-    if (effectGlow) { trailCtx.shadowBlur = 8; trailCtx.shadowColor = pc; }
-    trailCtx.globalAlpha = 0.4 + Math.random() * 0.5;
-    trailCtx.fillStyle   = pc;
-    trailCtx.beginPath(); trailCtx.arc(m.x, m.y, sz, 0, Math.PI*2); trailCtx.fill();
-    trailCtx.shadowBlur = 0;
-  }
-  trailCtx.restore();
 }
 
 function drawToWedge(s, nx, ny) {
   const p1 = mapToWedge(s.px, s.py);
   const p2 = mapToWedge(nx, ny);
-
-  // velocity for speed-sensitive width
   const now    = Date.now();
   const moveDt = Math.max(now - (s.drawT || now), 8);
   const dist   = Math.sqrt((nx-s.px)**2 + (ny-s.py)**2);
   s.drawT      = now;
-  const speed  = dist / moveDt; // px/ms
+  const speed  = dist / moveDt;
 
   if (effectParticle) {
-    scatterParticles(s.px, s.py, nx, ny, s.color);
+    const dx = nx - s.px, dy = ny - s.py;
+    const steps = Math.max(1, Math.floor(dist / 6));
+    trailCtx.save();
+    for (let i = 0; i <= steps; i++) {
+      const t   = i / steps;
+      const px  = s.px + dx*t + (Math.random()-0.5)*14;
+      const py  = s.py + dy*t + (Math.random()-0.5)*14;
+      const m   = mapToWedge(px, py);
+      const sz  = 1.5 + Math.random() * 5;
+      const pc  = effectRainbow ? `hsl(${strokeHue},100%,65%)` : s.color;
+      if (effectRainbow) strokeHue = (strokeHue + 1) % 360;
+      if (effectGlow) { trailCtx.shadowBlur = 8; trailCtx.shadowColor = pc; }
+      trailCtx.globalAlpha = 0.4 + Math.random() * 0.5;
+      trailCtx.fillStyle   = pc;
+      trailCtx.beginPath(); trailCtx.arc(m.x, m.y, sz, 0, Math.PI*2); trailCtx.fill();
+      trailCtx.shadowBlur  = 0;
+    }
+    trailCtx.restore();
   } else {
     const sc = effectRainbow ? `hsl(${strokeHue},100%,62%)` : s.color;
-    // speed=0→28px, speed=5→3px, clamped
     const lw = effectVelocity ? clamp(28 - speed * 5, 3, 28) : STROKE_WIDTH;
     trailCtx.save();
     if (effectGlow) { trailCtx.shadowBlur = 18; trailCtx.shadowColor = sc; }
-    trailCtx.strokeStyle = sc;
-    trailCtx.lineWidth   = lw;
-    trailCtx.globalAlpha = 0.92;
-    trailCtx.beginPath();
-    trailCtx.moveTo(p1.x, p1.y); trailCtx.lineTo(p2.x, p2.y);
-    trailCtx.stroke();
+    trailCtx.strokeStyle = sc; trailCtx.lineWidth = lw; trailCtx.globalAlpha = 0.92;
+    trailCtx.beginPath(); trailCtx.moveTo(p1.x, p1.y); trailCtx.lineTo(p2.x, p2.y); trailCtx.stroke();
     trailCtx.restore();
     if (effectRainbow) strokeHue = (strokeHue + 3) % 360;
   }
@@ -450,29 +488,39 @@ function drawToWedge(s, nx, ny) {
 
 // ── 撤销 ──────────────────────────────────────
 function saveUndoState() {
-  if (kaleidoscopeMode !== 'digital') return;
   if (undoHistory.length >= UNDO_MAX) undoHistory.shift();
-  // Save at half logical resolution to keep memory low
   const snapW = Math.ceil(W * 0.5), snapH = Math.ceil(H * 0.5);
   const snap  = document.createElement('canvas');
-  snap.width  = snapW; snap.height = snapH;
+  snap.width = snapW; snap.height = snapH;
   snap.getContext('2d').drawImage(trailCanvas, 0, 0, snapW, snapH);
   undoHistory.push(snap);
 }
 function undoStroke() {
   if (!undoHistory.length) return;
-  const prev = undoHistory.pop();
   trailCtx.clearRect(0, 0, W, H);
-  trailCtx.drawImage(prev, 0, 0, W, H);
+  trailCtx.drawImage(undoHistory.pop(), 0, 0, W, H);
 }
 
-// ── 大小 ──────────────────────────────────────
-function setSize(idx) {
-  radiusSizeIdx = idx;
-  radius = Math.min(W, H) * RADIUS_RATIOS[idx];
+// ── 重置全部设置 ──────────────────────────────
+function resetAll() {
+  currentPaletteIdx = DEFAULTS.paletteIdx;
+  palette           = PALETTES[DEFAULTS.paletteIdx];
+  currentShapeMode  = DEFAULTS.shapeMode;
+  kaleidoscopeMode  = DEFAULTS.kalMode;
+  currentPatternIdx = DEFAULTS.patternIdx;
+  radiusSizeIdx     = DEFAULTS.sizeIdx;
+  sectorCount       = DEFAULTS.sectorCount;
+  sectorAngle       = (Math.PI * 2) / DEFAULTS.sectorCount;
+  rotSpeedMultIdx   = DEFAULTS.speedIdx;
+  effectFade = effectGlow = effectVelocity = effectRainbow = effectParticle = false;
+  strokeHue   = 0;
+  rotVelocity = 0;
+  undoHistory = [];
+  radius = Math.min(W, H) * RADIUS_RATIOS[DEFAULTS.sizeIdx];
+  trailCtx.clearRect(0, 0, W, H);
+  glassPieces = [];
   createFloaters();
-  if (kaleidoscopeMode === 'traditional') createGlassPieces();
-  refreshPanel(); closePanel();
+  if (panelOpen) refreshPanel();
 }
 
 // ── 触摸 & 鼠标 ───────────────────────────────
@@ -490,17 +538,15 @@ function applyDragRotation(stroke, nx, ny) {
   const now    = Date.now();
   const moveDt = Math.max(now - (stroke.lastT || now), 8);
   stroke.lastT = now;
-  autoAngle   += da;
-  const MAX_VEL = 0.02;
-  rotVelocity = Math.max(-MAX_VEL, Math.min(MAX_VEL, da / moveDt));
+  autoAngle += da;
+  rotVelocity = Math.max(-0.02, Math.min(0.02, da / moveDt));
 }
 
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     activeStrokes[t.identifier] = {
-      px: t.clientX, py: t.clientY,
-      sx: t.clientX, sy: t.clientY,
+      px: t.clientX, py: t.clientY, sx: t.clientX, sy: t.clientY,
       t0: Date.now(), moved: false, color: pickColor(),
     };
   }
@@ -509,10 +555,9 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
-    const s = activeStrokes[t.identifier];
-    if (!s) continue;
+    const s = activeStrokes[t.identifier]; if (!s) continue;
     const ddx = t.clientX - s.sx, ddy = t.clientY - s.sy;
-    if (!s.moved && Math.sqrt(ddx*ddx + ddy*ddy) > TAP_MOVE_PX) s.moved = true;
+    if (!s.moved && Math.sqrt(ddx*ddx+ddy*ddy) > TAP_MOVE_PX) s.moved = true;
     if (s.moved) {
       if (kaleidoscopeMode === 'digital') drawToWedge(s, t.clientX, t.clientY);
       else applyDragRotation(s, t.clientX, t.clientY);
@@ -548,7 +593,7 @@ canvas.addEventListener('mousedown', e => {
 canvas.addEventListener('mousemove', e => {
   if (!mouse) return;
   const ddx = e.clientX - mouse.sx, ddy = e.clientY - mouse.sy;
-  if (!mouse.moved && Math.sqrt(ddx*ddx + ddy*ddy) > TAP_MOVE_PX) mouse.moved = true;
+  if (!mouse.moved && Math.sqrt(ddx*ddx+ddy*ddy) > TAP_MOVE_PX) mouse.moved = true;
   if (mouse.moved) {
     if (kaleidoscopeMode === 'digital') drawToWedge(mouse, e.clientX, e.clientY);
     else applyDragRotation(mouse, e.clientX, e.clientY);
@@ -567,7 +612,6 @@ canvas.addEventListener('mouseup', () => {
 });
 canvas.addEventListener('mouseleave', () => { mouse = null; });
 
-// ── 撤销快捷键 ────────────────────────────────
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && kaleidoscopeMode === 'digital') {
     e.preventDefault(); undoStroke();
@@ -596,11 +640,11 @@ function renderKaleidoscope() {
   ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.translate(cx, cy);
-  for (let k = 0; k < SECTORS; k++) {
+  for (let k = 0; k < sectorCount; k++) {
     ctx.save();
-    ctx.rotate((autoAngle + tiltAngle) + k * SECTOR_ANGLE);
+    ctx.rotate((autoAngle + tiltAngle) + k * sectorAngle);
     if (k % 2 === 1) ctx.scale(1, -1);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, radius*1.6, 0, SECTOR_ANGLE); ctx.closePath(); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, radius*1.6, 0, sectorAngle); ctx.closePath(); ctx.clip();
     if (kaleidoscopeMode === 'digital') {
       ctx.drawImage(trailCanvas, -cx, -cy, W, H);
       for (const f of floaters) {
@@ -616,7 +660,8 @@ function renderKaleidoscope() {
         renderGlassPiece(ctx,
           g.r * Math.cos(g.angle), g.r * Math.sin(g.angle),
           g.rotation, g.pts,
-          palette.colors[g.colorIdx % palette.colors.length], g.alpha);
+          palette.colors[g.colorIdx % palette.colors.length],
+          g.displayAlpha);   // 使用渐入 alpha
       }
     }
     ctx.globalAlpha = 1;
@@ -639,8 +684,7 @@ function loop(ts) {
   lastTs = ts;
 
   if (kaleidoscopeMode === 'digital') {
-    autoAngle += AUTO_ROTATE_SPD * dt;
-    // 渐隐效果：每帧微量擦除笔触
+    autoAngle += AUTO_ROTATE_BASE * SPEED_OPTIONS[rotSpeedMultIdx].mult * dt;
     if (effectFade) {
       trailCtx.globalCompositeOperation = 'destination-out';
       trailCtx.globalAlpha = 0.006 * (dt / 16);
@@ -651,7 +695,7 @@ function loop(ts) {
   } else {
     autoAngle  += rotVelocity * dt;
     rotVelocity *= Math.pow(ROT_FRICTION, dt / 16);
-    if (Math.abs(rotVelocity) < 0.000001) rotVelocity = 0;
+    if (Math.abs(rotVelocity) < 1e-6) rotVelocity = 0;
   }
   tiltAngle += (tiltTarget - tiltAngle) * TILT_LERP;
 
@@ -678,12 +722,31 @@ function setShapeMode(mode) {
 }
 function setKaleidoscopeMode(mode) {
   kaleidoscopeMode = mode; rotVelocity = 0;
-  if (mode === 'traditional') { createGlassPieces(); undoHistory = []; }
+  if (mode === 'traditional') {
+    createGlassPieces();
+    shuffleGlassPieces(true);  // 轻柔动画归位，displayAlpha 从 0 渐入
+    undoHistory = [];
+  }
   refreshPanel(); closePanel();
 }
 function setPattern(idx) {
   currentPatternIdx = idx; createGlassPieces(); shuffleGlassPieces(true);
   refreshPanel(); closePanel();
+}
+function setSize(idx) {
+  radiusSizeIdx = idx;
+  radius = Math.min(W, H) * RADIUS_RATIOS[idx];
+  createFloaters();
+  if (kaleidoscopeMode === 'traditional') createGlassPieces();
+  refreshPanel(); closePanel();
+}
+function setSectorCount(n) {
+  sectorCount = n; sectorAngle = (Math.PI * 2) / n;
+  createFloaters(); trailCtx.clearRect(0, 0, W, H); undoHistory = [];
+  refreshPanel(); closePanel();
+}
+function setRotSpeed(idx) {
+  rotSpeedMultIdx = idx; refreshPanel();
 }
 
 // ── 面板 UI ───────────────────────────────────
@@ -692,37 +755,49 @@ const paletteList    = document.getElementById('paletteList');
 const shapeRow       = document.getElementById('shapeRow');
 const modeRow        = document.getElementById('modeRow');
 const sizeRow        = document.getElementById('sizeRow');
+const sectorRow      = document.getElementById('sectorRow');
+const speedRow       = document.getElementById('speedRow');
 const patternGrid    = document.getElementById('patternGrid');
 const effectGrid     = document.getElementById('effectGrid');
 const shapeSection   = document.getElementById('shapeSection');
 const patternSection = document.getElementById('patternSection');
 const effectSection  = document.getElementById('effectSection');
+const sectorSection  = document.getElementById('sectorSection');
+const speedSection   = document.getElementById('speedSection');
 let   panelOpen      = false;
+
+// 面板内点击不冒泡，防止 refreshPanel 重建 DOM 后误关闭
+panel.addEventListener('click', e => e.stopPropagation());
+
+function makeBtns(container, labels, activeCheck, onClick) {
+  container.innerHTML = '';
+  labels.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'row-btn' + (activeCheck(i) ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => onClick(i));
+    container.appendChild(btn);
+  });
+}
 
 function refreshPanel() {
   const isTrad = kaleidoscopeMode === 'traditional';
 
-  // 样式
-  modeRow.innerHTML = '';
-  KAL_MODES.forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'row-btn' + (m.id === kaleidoscopeMode ? ' active' : '');
-    btn.textContent = m.label;
-    btn.addEventListener('click', () => setKaleidoscopeMode(m.id));
-    modeRow.appendChild(btn);
-  });
+  makeBtns(modeRow, KAL_MODES.map(m => m.label),
+    i => KAL_MODES[i].id === kaleidoscopeMode,
+    i => setKaleidoscopeMode(KAL_MODES[i].id));
 
-  // 大小
-  sizeRow.innerHTML = '';
-  ['小','中','大'].forEach((label, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'row-btn' + (i === radiusSizeIdx ? ' active' : '');
-    btn.textContent = label;
-    btn.addEventListener('click', () => setSize(i));
-    sizeRow.appendChild(btn);
-  });
+  makeBtns(sizeRow, ['小','中','大'], i => i === radiusSizeIdx, setSize);
 
-  // 图案（传统模式）
+  sectorSection.style.display = isTrad ? 'none' : '';
+  makeBtns(sectorRow, SECTOR_OPTIONS.map(n => n+'折'),
+    i => SECTOR_OPTIONS[i] === sectorCount,
+    i => setSectorCount(SECTOR_OPTIONS[i]));
+
+  speedSection.style.display = isTrad ? 'none' : '';
+  makeBtns(speedRow, SPEED_OPTIONS.map(s => s.label),
+    i => i === rotSpeedMultIdx, setRotSpeed);
+
   patternSection.style.display = isTrad ? '' : 'none';
   patternGrid.innerHTML = '';
   PATTERNS.forEach((p, i) => {
@@ -733,7 +808,6 @@ function refreshPanel() {
     patternGrid.appendChild(btn);
   });
 
-  // 配色
   paletteList.innerHTML = '';
   PALETTES.forEach((p, i) => {
     const item = document.createElement('div');
@@ -749,7 +823,6 @@ function refreshPanel() {
     paletteList.appendChild(item);
   });
 
-  // 形状（数字模式）
   shapeSection.style.display = isTrad ? 'none' : '';
   shapeRow.innerHTML = '';
   SHAPE_MODES.forEach(m => {
@@ -760,20 +833,19 @@ function refreshPanel() {
     shapeRow.appendChild(btn);
   });
 
-  // 画笔效果（数字模式）
   effectSection.style.display = isTrad ? 'none' : '';
   effectGrid.innerHTML = '';
   const EFFECTS = [
     { label:'渐隐', get:()=>effectFade,     set:v=>{ effectFade     = v; } },
     { label:'发光', get:()=>effectGlow,     set:v=>{ effectGlow     = v; } },
     { label:'速感', get:()=>effectVelocity, set:v=>{ effectVelocity = v; } },
-    { label:'彩虹', get:()=>effectRainbow,  set:v=>{ effectRainbow  = v; if (v) strokeHue = 0; } },
+    { label:'彩虹', get:()=>effectRainbow,  set:v=>{ effectRainbow  = v; if(v) strokeHue=0; } },
     { label:'粒子拖尾', full:true, get:()=>effectParticle, set:v=>{ effectParticle = v; } },
   ];
   EFFECTS.forEach(ef => {
     const on  = ef.get();
     const btn = document.createElement('button');
-    btn.className = 'grid-btn' + (on ? ' active effect-active' : '') + (ef.full ? ' full' : '');
+    btn.className = 'grid-btn' + (on ? ' active effect-on' : '') + (ef.full ? ' full' : '');
     btn.textContent = ef.label;
     btn.addEventListener('click', () => { ef.set(!ef.get()); refreshPanel(); });
     effectGrid.appendChild(btn);
@@ -785,19 +857,16 @@ function closePanel()  { panelOpen = false; panel.style.display = 'none'; }
 function togglePanel() { panelOpen ? closePanel() : openPanel(); }
 
 document.getElementById('paletteBtn').addEventListener('click', e => { e.stopPropagation(); togglePanel(); });
-document.addEventListener('click', e => {
-  if (panelOpen && !panel.contains(e.target) && e.target !== document.getElementById('paletteBtn')) closePanel();
-});
+document.addEventListener('click', () => { if (panelOpen) closePanel(); });
 
-// ── ↺ 按钮：短按清空，长按撤销 ───────────────
+// ── ↺ 按钮：短按重置全部，长按撤销（数字模式）──
 const clearBtn = document.getElementById('clearBtn');
-let clearLongTimer   = null;
-let clearDidLongPress = false;
+let clearLongTimer = null, clearDidLong = false;
 
-function clearStart() {
-  clearDidLongPress = false;
+clearBtn.addEventListener('pointerdown', e => {
+  e.preventDefault(); clearDidLong = false;
   clearLongTimer = setTimeout(() => {
-    clearDidLongPress = true;
+    clearDidLong = true;
     if (kaleidoscopeMode === 'digital') {
       undoStroke();
       clearBtn.classList.add('undo-flash');
@@ -805,22 +874,19 @@ function clearStart() {
       if (navigator.vibrate) navigator.vibrate(30);
     }
   }, 550);
-}
-function clearEnd() {
+});
+clearBtn.addEventListener('pointerup', () => {
   clearTimeout(clearLongTimer); clearLongTimer = null;
-  if (!clearDidLongPress) {
-    if (kaleidoscopeMode === 'digital') { undoHistory = []; trailCtx.clearRect(0, 0, W, H); }
-    else shuffleGlassPieces(false);
+  if (!clearDidLong) {
+    resetAll();
+    clearBtn.classList.add('reset-flash');
+    setTimeout(() => clearBtn.classList.remove('reset-flash'), 350);
   }
-  clearDidLongPress = false;
-}
-function clearCancel() {
-  clearTimeout(clearLongTimer); clearLongTimer = null; clearDidLongPress = false;
-}
-
-clearBtn.addEventListener('pointerdown',  e => { e.preventDefault(); clearStart(); });
-clearBtn.addEventListener('pointerup',    clearEnd);
-clearBtn.addEventListener('pointerleave', clearCancel);
+  clearDidLong = false;
+});
+clearBtn.addEventListener('pointerleave', () => {
+  clearTimeout(clearLongTimer); clearLongTimer = null; clearDidLong = false;
+});
 
 // ── 开始 ──────────────────────────────────────
 document.getElementById('startBtn').addEventListener('click', async () => {
@@ -838,8 +904,8 @@ document.getElementById('startBtn').addEventListener('click', async () => {
     if (typeof DeviceMotionEvent      !== 'undefined') window.addEventListener('devicemotion', onMotion);
   }
   document.getElementById('startScreen').style.display = 'none';
-  clearBtn.style.display                                = 'flex';
-  document.getElementById('paletteBtn').style.display  = 'flex';
+  clearBtn.style.display = 'flex';
+  document.getElementById('paletteBtn').style.display = 'flex';
   resizeCanvas(); createFloaters(); requestAnimationFrame(loop);
 });
 
