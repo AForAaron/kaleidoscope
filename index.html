@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <title>万花筒</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      touch-action: none;
+    }
+
+    /* ── 开始屏幕 ── */
+    #startScreen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, #1a003a 0%, #000 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #startEmoji { font-size: 4rem; margin-bottom: 0.4rem; }
+    #startTitle { font-size: 2.4rem; color: #fff; letter-spacing: 0.15em; margin-bottom: 0.5rem; }
+    #startSub { color: rgba(255,255,255,0.5); font-size: 1rem; margin-bottom: 3rem; }
+    #startBtn {
+      width: 150px; height: 150px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      background: radial-gradient(circle, rgba(130,0,255,0.7), rgba(0,180,255,0.3));
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 0 50px rgba(130,0,255,0.5), 0 0 100px rgba(0,180,255,0.2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #startBtn:active { transform: scale(0.94); box-shadow: 0 0 20px rgba(130,0,255,0.4); }
+    #startBtnIcon { font-size: 2.2rem; }
+
+    /* ── 角落按钮 ── */
+    .ui-btn {
+      position: fixed;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.55);
+      color: rgba(255,255,255,0.75);
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: opacity 0.2s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+    .ui-btn:active { opacity: 0.5; transform: scale(0.92); }
+    #clearBtn   { bottom: 36px; left: 36px; }
+    #paletteBtn { bottom: 36px; right: 36px; font-size: 1.3rem; }
+
+    /* ── 设置面板 ── */
+    #panel {
+      position: fixed;
+      bottom: 108px; right: 20px;
+      width: 230px;
+      background: rgba(10,10,20,0.88);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 16px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .panel-section-title {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    /* 配色行 */
+    .palette-item {
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer; padding: 7px 8px;
+      border-radius: 12px;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .palette-item.active { background: rgba(255,255,255,0.12); }
+    .palette-item:active { background: rgba(255,255,255,0.08); }
+    .palette-swatches { display: flex; gap: 4px; }
+    .palette-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .palette-name { color: rgba(255,255,255,0.85); font-size: 0.82rem; }
+    /* 形状行 */
+    .shape-row { display: flex; gap: 8px; }
+    .shape-btn {
+      flex: 1; padding: 8px 4px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      font-size: 1.2rem;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .shape-btn.active {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.4);
+      color: #fff;
+    }
+    .shape-btn:active { opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+<!-- 开始屏幕 -->
+<div id="startScreen">
+  <div id="startEmoji">🌸</div>
+  <div id="startTitle">万花筒</div>
+  <div id="startSub">触摸屏幕，创造你的花纹</div>
+  <button id="startBtn">
+    <span id="startBtnIcon">✦</span>
+    <span>开始</span>
+  </button>
+</div>
+
+<!-- 主画布 -->
+<canvas id="mainCanvas"></canvas>
+
+<!-- 角落按钮 -->
+<button class="ui-btn" id="clearBtn" title="清空">↺</button>
+<button class="ui-btn" id="paletteBtn" title="设置">🎨</button>
+
+<!-- 设置面板 -->
+<div id="panel">
+  <div>
+    <div class="panel-section-title">配色</div>
+    <div id="paletteList"></div>
+  </div>
+  <div>
+    <div class="panel-section-title">形状</div>
+    <div class="shape-row" id="shapeRow"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════
+// 常量 & 配置
+// ════════════════════════════════════════════
+const SECTORS          = 12;
+const SECTOR_ANGLE     = (Math.PI * 2) / SECTORS;
+const AUTO_ROTATE_SPD  = 0.00025;  // 每毫秒自动旋转弧度
+const TILT_LERP        = 0.05;     // 陀螺仪平滑插值（越小越稳）
+const STROKE_WIDTH     = 16;       // 笔触粗细（逻辑像素）
+const TAP_MOVE_PX      = 10;       // 小于此位移视为点击
+const TAP_TIME_MS      = 250;      // 小于此时长视为点击
+const FLOAT_COUNT      = 24;       // 漂浮粒子数量
+
+// ════════════════════════════════════════════
+// 配色方案
+// ════════════════════════════════════════════
+const PALETTES = [
+  {
+    name: '霓虹荧光',
+    colors: ['#00ff88','#ff00cc','#ff6600','#00ccff','#ffff00','#ff0066'],
+    bg: '#000000'
+  },
+  {
+    name: '糖果马卡龙',
+    colors: ['#ff9eb5','#a8edba','#ffd6a5','#b5c7f7','#ffc8e8','#c3f0ca'],
+    bg: '#0d001a'
+  },
+  {
+    name: '彩虹七色',
+    colors: ['#ff3030','#ff8800','#ffee00','#44ee00','#00aaff','#6644ff','#cc00ff'],
+    bg: '#000000'
+  },
+  {
+    name: '星空深蓝',
+    colors: ['#4488ff','#88ddff','#ffd700','#ffffff','#66aaff','#aaddff'],
+    bg: '#00001a'
+  }
+];
+
+// 形状模式：circle / star / mixed
+const SHAPE_MODES = [
+  { id: 'circle', label: '●', title: '圆点' },
+  { id: 'star',   label: '★', title: '星形' },
+  { id: 'mixed',  label: '✦', title: '混搭' }
+];
+
+let currentPaletteIdx = 0;
+let currentShapeMode  = 'mixed';
+let palette = PALETTES[0];
+
+// ════════════════════════════════════════════
+// Canvas & 尺寸
+// ════════════════════════════════════════════
+const canvas = document.getElementById('mainCanvas');
+const ctx    = canvas.getContext('2d');
+
+let trailCanvas, trailCtx;  // 持久笔触离屏画布
+let W, H, cx, cy, radius;
+let dpr = 1;
+
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W   = window.innerWidth;
+  H   = window.innerHeight;
+  cx  = W / 2;
+  cy  = H / 2;
+  radius = Math.min(W, H) * 0.52;
+
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.scale(dpr, dpr);
+
+  // 笔触离屏画布（resize 会清空笔触，可接受）
+  trailCanvas        = document.createElement('canvas');
+  trailCanvas.width  = Math.round(W * dpr);
+  trailCanvas.height = Math.round(H * dpr);
+  trailCtx           = trailCanvas.getContext('2d');
+  trailCtx.scale(dpr, dpr);
+  trailCtx.lineCap   = 'round';
+  trailCtx.lineJoin  = 'round';
+}
+
+// ════════════════════════════════════════════
+// 旋转状态
+// ════════════════════════════════════════════
+let autoAngle   = 0;
+let tiltAngle   = 0;
+let tiltTarget  = 0;
+
+// ════════════════════════════════════════════
+// 漂浮粒子
+// ════════════════════════════════════════════
+let floaters = [];
+
+function makeFloater() {
+  // 粒子定义在源扇区坐标系内（第一个半扇区）
+  const shapePool = currentShapeMode === 'circle' ? ['circle']
+                  : currentShapeMode === 'star'   ? ['star']
+                  : ['circle','circle','star'];
+  return {
+    r:          30 + Math.random() * (radius * 0.82),
+    angle:      Math.random() * (SECTOR_ANGLE * 0.5),
+    size:       4 + Math.random() * 10,
+    angSpeed:   (0.00015 + Math.random() * 0.0004) * (Math.random() > 0.5 ? 1 : -1),
+    colorIdx:   Math.floor(Math.random() * palette.colors.length),
+    alpha:      0.45 + Math.random() * 0.45,
+    shape:      shapePool[Math.floor(Math.random() * shapePool.length)],
+    pulsePhase: Math.random() * Math.PI * 2,
+    pulseSpd:   0.02 + Math.random() * 0.03
+  };
+}
+
+function createFloaters() {
+  floaters = Array.from({ length: FLOAT_COUNT }, makeFloater);
+}
+
+function updateFloaters(dt) {
+  for (const f of floaters) {
+    f.angle      += f.angSpeed * dt;
+    f.pulsePhase += f.pulseSpd;
+    // 离开半扇区后重置（让粒子在边界附近循环）
+    if (f.angle > SECTOR_ANGLE * 0.5) f.angle -= SECTOR_ANGLE * 0.5;
+    if (f.angle < 0)                  f.angle += SECTOR_ANGLE * 0.5;
+    // 偶尔换色
+    if (Math.random() > 0.998) f.colorIdx = (f.colorIdx + 1) % palette.colors.length;
+  }
+}
+
+function drawStar(c, x, y, size) {
+  const pts = 5;
+  const inner = size * 0.45;
+  c.beginPath();
+  for (let i = 0; i < pts * 2; i++) {
+    const a = (i * Math.PI) / pts - Math.PI / 2;
+    const r = i % 2 === 0 ? size : inner;
+    if (i === 0) c.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
+    else         c.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+  }
+  c.closePath();
+  c.fill();
+}
+
+// ════════════════════════════════════════════
+// 笔触绘制（映射到源扇区）
+// ════════════════════════════════════════════
+function pickColor() {
+  return palette.colors[Math.floor(Math.random() * palette.colors.length)];
+}
+
+// 把屏幕坐标折叠进第一个半扇区（源图案区域）
+function mapToWedge(sx, sy) {
+  const total = autoAngle + tiltAngle;
+  const dx = sx - cx;
+  const dy = sy - cy;
+  const r  = Math.sqrt(dx * dx + dy * dy);
+  let   th = Math.atan2(dy, dx) - total;
+  th = ((th % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  th = th % SECTOR_ANGLE;
+  // 镜像折叠：超过半扇区就翻转
+  if (th > SECTOR_ANGLE / 2) th = SECTOR_ANGLE - th;
+  return { x: cx + r * Math.cos(th), y: cy + r * Math.sin(th) };
+}
+
+function strokeBetween(x1, y1, x2, y2, color) {
+  trailCtx.beginPath();
+  trailCtx.strokeStyle = color;
+  trailCtx.lineWidth   = STROKE_WIDTH;
+  trailCtx.globalAlpha = 0.92;
+  trailCtx.moveTo(x1, y1);
+  trailCtx.lineTo(x2, y2);
+  trailCtx.stroke();
+  trailCtx.globalAlpha = 1;
+}
+
+// ════════════════════════════════════════════
+// 触摸 & 鼠标事件
+// ════════════════════════════════════════════
+const activeStrokes = {};
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    activeStrokes[t.identifier] = {
+      px: t.clientX, py: t.clientY,
+      sx: t.clientX, sy: t.clientY,
+      t0: Date.now(),
+      moved: false,
+      color: pickColor()
+    };
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const s = activeStrokes[t.identifier];
+    if (!s) continue;
+    const ddx = t.clientX - s.sx, ddy = t.clientY - s.sy;
+    if (!s.moved && Math.sqrt(ddx*ddx + ddy*ddy) > TAP_MOVE_PX) s.moved = true;
+    if (s.moved) {
+      const p1 = mapToWedge(s.px, s.py);
+      const p2 = mapToWedge(t.clientX, t.clientY);
+      strokeBetween(p1.x, p1.y, p2.x, p2.y, s.color);
+      s.px = t.clientX; s.py = t.clientY;
+    }
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const s = activeStrokes[t.identifier];
+    if (s && !s.moved && (Date.now() - s.t0) < TAP_TIME_MS) {
+      cyclePalette();
+    }
+    delete activeStrokes[t.identifier];
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', e => {
+  for (const t of e.changedTouches) delete activeStrokes[t.identifier];
+});
+
+// 桌面鼠标支持（方便本地测试）
+let mouse = null;
+canvas.addEventListener('mousedown', e => {
+  mouse = { px: e.clientX, py: e.clientY, color: pickColor() };
+});
+canvas.addEventListener('mousemove', e => {
+  if (!mouse) return;
+  const p1 = mapToWedge(mouse.px, mouse.py);
+  const p2 = mapToWedge(e.clientX, e.clientY);
+  strokeBetween(p1.x, p1.y, p2.x, p2.y, mouse.color);
+  mouse.px = e.clientX; mouse.py = e.clientY;
+});
+canvas.addEventListener('mouseup',    () => { mouse = null; });
+canvas.addEventListener('mouseleave', () => { mouse = null; });
+
+// ════════════════════════════════════════════
+// 陀螺仪
+// ════════════════════════════════════════════
+function onOrientation(e) {
+  const gamma = e.gamma || 0;  // 左右倾 -90..90°
+  const beta  = e.beta  || 0;  // 前后倾 -180..180°
+  // 左右倾为主要旋转维度，前后倾小幅叠加
+  tiltTarget = (gamma / 90) * Math.PI * 0.75
+             + (beta  / 180) * Math.PI * 0.15;
+}
+
+// ════════════════════════════════════════════
+// 万花筒渲染
+// ════════════════════════════════════════════
+function renderKaleidoscope() {
+  // 背景
+  ctx.fillStyle = palette.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  for (let k = 0; k < SECTORS; k++) {
+    ctx.save();
+
+    // 每个扇区旋转 + 奇数扇区镜像
+    ctx.rotate((autoAngle + tiltAngle) + k * SECTOR_ANGLE);
+    if (k % 2 === 1) ctx.scale(1, -1);
+
+    // 裁剪到楔形区域
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius * 1.6, 0, SECTOR_ANGLE);
+    ctx.closePath();
+    ctx.clip();
+
+    // 1. 绘制持久笔触（离屏画布 → 当前变换空间）
+    ctx.drawImage(trailCanvas, -cx, -cy, W, H);
+
+    // 2. 绘制漂浮粒子
+    for (const f of floaters) {
+      const fx = f.r * Math.cos(f.angle);
+      const fy = f.r * Math.sin(f.angle);
+      const sz = f.size * (1 + 0.3 * Math.sin(f.pulsePhase));
+      ctx.globalAlpha = f.alpha;
+      ctx.fillStyle   = palette.colors[f.colorIdx % palette.colors.length];
+      if (f.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(fx, fy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        drawStar(ctx, fx, fy, sz);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════
+// 主循环
+// ════════════════════════════════════════════
+let lastTs = 0;
+
+function loop(ts) {
+  const dt = ts - lastTs || 16;
+  lastTs = ts;
+
+  autoAngle += AUTO_ROTATE_SPD * dt;
+  tiltAngle += (tiltTarget - tiltAngle) * TILT_LERP;
+
+  updateFloaters(dt);
+  renderKaleidoscope();
+
+  requestAnimationFrame(loop);
+}
+
+// ════════════════════════════════════════════
+// 配色 & 形状切换
+// ════════════════════════════════════════════
+function cyclePalette() {
+  currentPaletteIdx = (currentPaletteIdx + 1) % PALETTES.length;
+  palette = PALETTES[currentPaletteIdx];
+  refreshPanel();
+}
+
+function setPalette(idx) {
+  currentPaletteIdx = idx;
+  palette = PALETTES[idx];
+  refreshPanel();
+  closePanel();
+}
+
+function setShapeMode(mode) {
+  currentShapeMode = mode;
+  // 重建粒子以应用新形状
+  floaters.forEach(f => {
+    const pool = mode === 'circle' ? ['circle']
+               : mode === 'star'   ? ['star']
+               : ['circle','circle','star'];
+    f.shape = pool[Math.floor(Math.random() * pool.length)];
+  });
+  refreshPanel();
+}
+
+// ════════════════════════════════════════════
+// 面板 UI
+// ════════════════════════════════════════════
+const panel       = document.getElementById('panel');
+const paletteList = document.getElementById('paletteList');
+const shapeRow    = document.getElementById('shapeRow');
+let   panelOpen   = false;
+
+function refreshPanel() {
+  // 配色列表
+  paletteList.innerHTML = '';
+  PALETTES.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'palette-item' + (i === currentPaletteIdx ? ' active' : '');
+
+    const swatches = document.createElement('div');
+    swatches.className = 'palette-swatches';
+    p.colors.slice(0, 5).forEach(c => {
+      const d = document.createElement('div');
+      d.className = 'palette-dot';
+      d.style.background = c;
+      swatches.appendChild(d);
+    });
+
+    const name = document.createElement('span');
+    name.className = 'palette-name';
+    name.textContent = p.name;
+
+    item.appendChild(swatches);
+    item.appendChild(name);
+    item.addEventListener('click', () => setPalette(i));
+    paletteList.appendChild(item);
+  });
+
+  // 形状按钮
+  shapeRow.innerHTML = '';
+  SHAPE_MODES.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'shape-btn' + (m.id === currentShapeMode ? ' active' : '');
+    btn.textContent = m.label;
+    btn.title = m.title;
+    btn.addEventListener('click', () => setShapeMode(m.id));
+    shapeRow.appendChild(btn);
+  });
+}
+
+function openPanel()  { panelOpen = true;  panel.style.display = 'flex'; refreshPanel(); }
+function closePanel() { panelOpen = false; panel.style.display = 'none'; }
+function togglePanel() { panelOpen ? closePanel() : openPanel(); }
+
+document.getElementById('paletteBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  togglePanel();
+});
+
+// 点击面板外部关闭
+document.addEventListener('click', e => {
+  if (panelOpen && !panel.contains(e.target) && e.target !== document.getElementById('paletteBtn')) {
+    closePanel();
+  }
+});
+
+// ════════════════════════════════════════════
+// 清空按钮
+// ════════════════════════════════════════════
+document.getElementById('clearBtn').addEventListener('click', () => {
+  trailCtx.clearRect(0, 0, W, H);
+});
+
+// ════════════════════════════════════════════
+// 开始按钮 & 陀螺仪授权
+// ════════════════════════════════════════════
+document.getElementById('startBtn').addEventListener('click', async () => {
+  // iOS 13+ 需要用户手势触发陀螺仪权限请求
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === 'granted') window.addEventListener('deviceorientation', onOrientation);
+    } catch (_) { /* 拒绝或不支持，优雅降级 */ }
+  } else if (typeof DeviceOrientationEvent !== 'undefined') {
+    // 安卓 / 桌面 —— 直接监听，无需授权
+    window.addEventListener('deviceorientation', onOrientation);
+  }
+
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('clearBtn').style.display    = 'flex';
+  document.getElementById('paletteBtn').style.display  = 'flex';
+
+  resizeCanvas();
+  createFloaters();
+  requestAnimationFrame(loop);
+});
+
+// ════════════════════════════════════════════
+// 响应式（屏幕旋转 / 窗口缩放）
+// ════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  createFloaters();
+});
+</script>
+</body>
+</html>
